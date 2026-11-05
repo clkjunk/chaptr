@@ -4,10 +4,11 @@ import re
 import sys
 from importlib.resources import files
 from pathlib import Path
-from urllib.parse import unquote, urlsplit
 
 import yaml
 from markdown_it import MarkdownIt
+
+from mdoc.render import render_document
 
 
 class BuildError(ValueError):
@@ -62,9 +63,14 @@ def load_config(path: Path) -> dict:
         for name, value in variables.items()
     ):
         raise BuildError("variables must map valid names to scalar values.")
-    for name in ("title", "theme", "output", "stylesheet"):
+    for name in ("title", "theme", "output", "stylesheet", "author", "subtitle", "front_cover", "back_cover", "author_section"):
         if name in config and not isinstance(config[name], str):
             raise BuildError(f"{name} must be a string.")
+    for name in ("title_page", "table_of_contents"):
+        if name in config and not isinstance(config[name], bool):
+            raise BuildError(f"{name} must be true or false.")
+    if "toc_depth" in config and (type(config["toc_depth"]) is not int or not 1 <= config["toc_depth"] <= 6):
+        raise BuildError("toc_depth must be an integer from 1 to 6.")
     return config
 
 
@@ -83,44 +89,28 @@ def theme_css(root: Path, name: str, stylesheet: str | None) -> str:
     return css
 
 
-def render_chapter(source: str, path: Path) -> str:
-    parser = MarkdownIt("commonmark", {"html": False}).enable("table")
-    tokens = parser.parse(source)
-    for token in tokens:
-        for child in token.children or []:
-            attribute = "src" if child.type == "image" else "href" if child.type == "link_open" else None
-            if attribute:
-                target = child.attrGet(attribute)
-                if target:
-                    url = urlsplit(target)
-                    if not url.scheme and not url.netloc and url.path:
-                        resolved = (path.parent / unquote(url.path)).resolve().as_uri()
-                        if url.query:
-                            resolved += "?" + url.query
-                        if url.fragment:
-                            resolved += "#" + url.fragment
-                        child.attrSet(attribute, resolved)
-    return parser.renderer.render(tokens, parser.options, {})
-
-
 def build(config_path: Path, format_name: str = "html", theme: str | None = None) -> Path:
     config_path = config_path.resolve()
     root = config_path.parent
     config = load_config(config_path)
     variables = {name: str(value) for name, value in config.get("variables", {}).items()}
     chapters = []
-    sections = []
-    for filename in config["files"]:
+    source_files = []
+    for field, role in (("front_cover", "front-cover"), ("author_section", "author-section")):
+        if config.get(field):
+            source_files.append((config[field], role))
+    source_files.extend((filename, "chapter") for filename in config["files"])
+    if config.get("back_cover"):
+        source_files.append((config["back_cover"], "back-cover"))
+    for filename, role in source_files:
         path = root / filename
         source = substitute(path.read_text(encoding="utf-8"), variables, path)
-        chapters.append(source.rstrip())
-        if format_name != "markdown":
-            sections.append('<section class="chapter">' + render_chapter(source, path) + "</section>")
+        chapters.append((source, path, role))
     output = root / config.get("output", "build")
     suffix = {"markdown": "md", "html": "html", "pdf": "pdf"}[format_name]
     destination = output / f"document.{suffix}"
     if format_name == "markdown":
-        content = "\n\n".join(chapters) + "\n"
+        content = "\n\n".join(source.rstrip() for source, path, role in chapters) + "\n"
     else:
         css = theme_css(root, theme or config.get("theme", "modern"), config.get("stylesheet"))
         title = html.escape(config.get("title", "Document"))
@@ -128,7 +118,7 @@ def build(config_path: Path, format_name: str = "html", theme: str | None = None
             '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width, initial-scale=1">'
             f"<title>{title}</title><style>{css}</style></head>"
-            f'<body><main>{"".join(sections)}</main></body></html>\n'
+            f'<body><main>{render_document(chapters, config)}</main></body></html>\n'
         )
     if format_name == "pdf":
         try:
