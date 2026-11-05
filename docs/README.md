@@ -12,6 +12,11 @@ These sections form a document project. Its
 [configuration](document.yaml) defines their order and shared values; its
 [stylesheet](styles.css) customizes the bundled theme.
 
+The configured [front cover](00-front-cover.md), [author section](00-authors.md)
+and [back cover](99-back-cover.md) demonstrate optional pages. The build also
+generates a title page and contents. Captions and footnotes are demonstrated in
+[Configuration and Variables](03-configuration.md).
+
 `mdoc init` creates an editable copy of this documentation as its default project.
 From that project directory (or this documentation directory), run:
 
