@@ -10,8 +10,8 @@ requires-python = ">=3.11"
 dependencies = ["markdown-it-py>=3,<5", "mdit-py-plugins>=0.5,<1", "PyYAML>=6,<7"]
 
 [project.optional-dependencies]
-pdf = ["WeasyPrint>=68,<70"]
-dev = ["pytest>=8,<10"]
+pdf = ["WeasyPrint>=68,<70", "pypdf>=6,<7"]
+dev = ["pytest>=8,<10", "pypdf>=6,<7"]
 
 [project.scripts]
 mdoc = "mdoc.cli:main"
