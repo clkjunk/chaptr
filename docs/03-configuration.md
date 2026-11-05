@@ -30,11 +30,11 @@ Table: Configuration fields
 | `title_page` | Generate a title page using title, subtitle and author | false |
 | `subtitle` | Subtitle on the generated title page | Empty |
 | `author` | Author text on the generated title page | Empty |
-| `front_cover` | Markdown file for a separate front cover | None |
+| `front_cover` | Markdown or single-page PDF front cover | None |
 | `author_section` | Markdown file for author details | None |
 | `table_of_contents` | Generate linked contents with PDF page numbers | false |
 | `toc_depth` | Heading levels included in contents, from 1 to 6 | 2 |
-| `back_cover` | Markdown file for a separate back cover | None |
+| `back_cover` | Markdown or single-page PDF back cover | None |
 
 Configured paths are relative to the configuration file. To use a different
 configuration filename, pass its path with `--config`.
@@ -107,16 +107,27 @@ back_cover: back-cover.md
 ```
 
 All these options are optional. Page order is front cover, title page, author
-section, contents, chapters, notes and back cover. Cover and author files contain
-ordinary Markdown and support variables and images. Do not list them again in
-`files`. The title, subtitle and author fields are plain text.
+section, contents, chapters, notes and back cover. Markdown covers and author files
+support variables and images. Do not list them again in `files`. The title,
+subtitle and author fields are plain text.
+
+For externally designed covers:
+
+```yaml
+front_cover: covers/front.pdf
+back_cover: covers/back.pdf
+```
+
+PDF covers must be unencrypted single-page files matching the generated page size.
+They are attached unchanged to the final PDF. HTML and Markdown builds omit them.
+See [PDF Rendering](05-pdf.md) for validation and page-numbering details.
 
 Contents include chapter headings up to `toc_depth`. Duplicate heading names get
 unique IDs such as `requirements` and `requirements-2`. HTML contents use links;
 PDF contents also show page numbers.
 
 HTML and PDF generate title pages, contents and numbered captions. Merged Markdown
-includes the authored cover and author sections and preserves caption and footnote
+includes Markdown cover and author sections and preserves caption and footnote
 syntax. It does not generate title-page or contents markup.
 
 [^paths]: Source and output paths are resolved relative to the configuration file.
