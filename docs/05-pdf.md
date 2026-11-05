@@ -26,9 +26,9 @@ for Windows, macOS or Linux.
 
 ## Current Status
 
-The PDF build path is implemented. On the initial Windows development machine,
-generation was blocked by missing `libgobject-2.0-0`. Successful PDF rendering and
-a clean-machine installation have not yet been verified.
+PDF generation has been checked on the Windows development setup, including
+document pages, captions, notes and contents page numbers. A clean-machine
+installation has not yet been verified.
 
 Missing renderer dependencies produce a build error. HTML and Markdown output,
 initialization and help remain available without them.
