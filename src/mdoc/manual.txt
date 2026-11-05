@@ -86,6 +86,31 @@ CONFIGURATION
     stylesheet  Optional extra CSS path, applied after the theme.
     output      Output directory; default: build.
     variables   Optional mapping of names to text, numbers or booleans.
+    title_page  Generate a title page; default: false.
+    subtitle    Plain-text title-page subtitle; default: empty.
+    author      Plain-text title-page author; default: empty.
+    front_cover Markdown file for a front cover; default: none.
+    author_section Markdown file for author details; default: none.
+    table_of_contents Generate linked contents; default: false.
+    toc_depth   Contents heading depth, 1 to 6; default: 2.
+    back_cover  Markdown file for a back cover; default: none.
+
+DOCUMENT FEATURES
+    Put Table: Caption text in a standalone paragraph directly above or below
+    a Markdown table. Captioned tables are numbered across the document in source
+    order. Tables without captions remain unnumbered. Use one caption per table.
+
+    Use [^label] references and [^label]: Note text definitions for footnotes.
+    Labels are document-wide. Numbered notes appear at the end with return links.
+
+    Optional page order: front cover, title page, author section, contents,
+    chapters, notes and back cover. Cover and author files use ordinary Markdown.
+    Do not list them again in files. Contents include only chapter headings.
+    HTML contents are linked; PDF contents include page numbers.
+
+    Title pages, contents and numbered captions are generated for HTML/PDF only.
+    Merged Markdown includes authored covers and author sections and preserves
+    caption and footnote source syntax.
 
 VARIABLES
     Write $product_name in Markdown to insert its configured value.
@@ -162,7 +187,8 @@ LIMITATIONS
     Build trusted local projects only: PDF rendering may read files or fetch URLs.
     Raw source HTML and mathematical notation are not supported.
     Substitution does not yet preserve multiline inline code.
-    Heading anchors, contents lists and interchapter navigation are not provided.
+    Cross-file Markdown links are not converted into internal document links.
+    Footnotes are collected at the document's end, not at each PDF page's bottom.
     HTML/PDF resolve relative image and link paths against their source chapter.
     HTML uses local file references, which must remain available. Merged Markdown
     retains source link paths, which may require adjustment after merging.
