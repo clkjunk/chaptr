@@ -31,6 +31,7 @@ mdoc build --config docs/document.yaml
 - Ordered Markdown chapters and simple shared variables.
 - Automatic table captions, linked footnotes and a table of contents.
 - Optional title pages, covers and author sections.
+- Pre-designed PDF covers with page-size validation and preserved contents links.
 - Markdown and HTML output, with an optional WeasyPrint PDF renderer.
 - Bundled themes, project-local overrides and additional stylesheets.
 - Command help and a bundled usage manual.
