@@ -29,6 +29,8 @@ mdoc build --config docs/document.yaml
 
 - Project initialization with the app's documentation and overwrite protection.
 - Ordered Markdown chapters and simple shared variables.
+- Automatic table captions, linked footnotes and a table of contents.
+- Optional title pages, covers and author sections.
 - Markdown and HTML output, with an optional WeasyPrint PDF renderer.
 - Bundled themes, project-local overrides and additional stylesheets.
 - Command help and a bundled usage manual.
