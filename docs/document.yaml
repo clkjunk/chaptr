@@ -1,0 +1,15 @@
+title: mdoc Documentation
+theme: modern
+stylesheet: styles.css
+output: build
+files:
+  - 01-requirements.md
+  - 02-workflow.md
+  - 03-configuration.md
+  - 04-themes.md
+  - 05-pdf.md
+  - 06-limitations.md
+  - 07-roadmap.md
+variables:
+  app_name: mdoc
+  app_version: "0.1.0"

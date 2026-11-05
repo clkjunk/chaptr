@@ -1,0 +1,169 @@
+MDOC - Markdown document builder
+
+NAME
+    mdoc - combine a document project's Markdown chapters into one output file
+
+SYNOPSIS
+    mdoc --help
+    mdoc help
+    mdoc init [DIRECTORY]
+    mdoc init --help
+    mdoc build [--config PATH] [--format {markdown,html,pdf}] [--theme NAME]
+    mdoc build --help
+
+DESCRIPTION
+    Install the CLI once and use it with any number of document projects.
+    Each project contains a YAML configuration and Markdown source files.
+
+COMMANDS
+    init
+        Create an editable copy of mdoc's documentation in DIRECTORY or the current
+        directory if omitted. Missing directories are created automatically.
+        The default project contains the documentation sections, README.md,
+        document.yaml, styles.css and a .gitignore excluding build output.
+        Read README.md or build the documentation, then adapt it to your content.
+        No output is rendered during init. Template selection is not supported
+        yet; see the copied roadmap section for future plans.
+
+        Existing starter files are never overwritten. Conflicts are checked
+        before writing; unrelated files are kept. If a starter file already
+        exists, choose a different directory. No --force option is provided.
+        Initialization is noninteractive and needs no PDF dependencies.
+
+    build
+        Read the configuration, substitute variables and combine chapters in
+        the listed order. HTML and PDF use CSS themes; Markdown is unstyled.
+        A successful build prints the absolute path of the generated file.
+
+    help
+        Print this manual. No document project or PDF dependencies are needed.
+
+OPTIONS
+    -h, --help
+        Show a short command overview. Use mdoc init --help or mdoc build --help
+        for command-specific usage.
+
+    DIRECTORY (init only)
+        Optional project directory to create or use. Default: current directory.
+        Quote paths containing spaces.
+
+    --config PATH
+        YAML configuration to load. Default: document.yaml in the current
+        directory. Paths inside it are relative to the configuration file,
+        regardless of where you run mdoc.
+
+    --format {markdown,html,pdf}
+        Output format. Default: html.
+        markdown produces merged source, html produces a styled browser
+        document and pdf produces a printable document via WeasyPrint.
+
+    --theme NAME
+        Override the configured theme for this build. Applies to HTML and PDF
+        only; ignored for Markdown. Bundled names: modern and vintage.
+
+CONFIGURATION
+    Minimal document.yaml:
+
+        files:
+          - notes.md
+
+    Extended document.yaml:
+
+        title: Product Guide
+        theme: modern
+        stylesheet: styles.css
+        output: build
+        files:
+          - chapters/introduction.md
+          - chapters/requirements.md
+        variables:
+          product_name: Field Notes
+          version: "1.0"
+
+    files       Required, nonempty list of source paths in chapter order.
+    title       HTML document title; default: Document.
+    theme       Named CSS theme; default: modern.
+    stylesheet  Optional extra CSS path, applied after the theme.
+    output      Output directory; default: build.
+    variables   Optional mapping of names to text, numbers or booleans.
+
+VARIABLES
+    Write $product_name in Markdown to insert its configured value.
+    Write $$ for a literal dollar sign, for example $$20 becomes $20.
+    Names contain letters, digits or underscores and cannot start with a digit.
+    Undefined names stop the build with a source filename and line number.
+    Values are inserted as Markdown.
+    Code blocks and ordinary inline code are left unchanged.
+
+THEMES
+    CSS is applied in this order:
+        1. Bundled base styling.
+        2. Project themes/NAME.css if present, otherwise bundled NAME.css.
+        3. The optional stylesheet specified in the configuration.
+
+    To create a theme, add themes/company.css and set theme: company.
+    A local themes/modern.css replaces only that project's modern theme.
+    Use @media print for PDF-specific rules and @page for size and margins.
+    The base print layout uses A4, 20mm margins and a new page per chapter.
+    Relative CSS asset URLs currently resolve from the project root.
+
+OUTPUT
+    The selected output directory receives one file per build:
+        document.md     --format markdown
+        document.html   --format html
+        document.pdf    --format pdf
+
+    Rebuilding a format replaces its existing file. Other formats are untouched.
+    Open HTML directly in a browser.
+
+PDF REQUIREMENTS
+    Developer installation from the application repository:
+        python -m pip install -e ".[pdf]"
+
+    WeasyPrint also requires native libraries, including Pango. Installing the
+    Python package alone may not be sufficient. Platform installation guide:
+        https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#installation
+
+    If native libraries are missing, PDF builds fail; HTML and Markdown still
+    work. Self-contained executable releases are not available yet.
+
+EXAMPLES
+    Create a document project and build its documentation:
+        mdoc init my-document
+        cd my-document
+        mdoc build
+
+    Initialize an existing directory or a path containing spaces:
+        mdoc init
+        mdoc init "My Document"
+
+    Build HTML from the current document project:
+        mdoc build
+
+    Build its PDF:
+        mdoc build --format pdf
+
+    Build a project from another directory, including a path with spaces:
+        mdoc build --config "C:/Documents/Product Guide/document.yaml" --format pdf
+        mdoc build --config /home/user/product-guide/document.yaml --format pdf
+
+    Export merged Markdown or select another theme:
+        mdoc build --format markdown
+        mdoc build --theme vintage
+
+EXIT STATUS
+    0   Success, including help output.
+    1   Initialization or build failure, such as existing starter files, invalid
+        configuration, missing files or variables, unknown themes or missing
+        PDF renderer dependencies.
+    2   Invalid command-line usage, such as an unknown option or format.
+
+LIMITATIONS
+    Build trusted local projects only: PDF rendering may read files or fetch URLs.
+    Raw source HTML and mathematical notation are not supported.
+    Substitution does not yet preserve multiline inline code.
+    Heading anchors, contents lists and interchapter navigation are not provided.
+    HTML/PDF resolve relative image and link paths against their source chapter.
+    HTML uses local file references, which must remain available. Merged Markdown
+    retains source link paths, which may require adjustment after merging.
+    Browser and WeasyPrint CSS support differ; test print styling in actual PDF.

@@ -1,0 +1,18 @@
+@page { size: A4; margin: 20mm; }
+* { box-sizing: border-box; }
+body { margin: 0; color: #202020; background: #fff; font-size: 11pt; line-height: 1.6; letter-spacing: 0; }
+main { max-width: 780px; margin: 40px auto; padding: 0 24px; }
+h1 { font-size: 24pt; line-height: 1.2; }
+h2 { font-size: 17pt; line-height: 1.3; }
+h1, h2, h3 { break-after: avoid; }
+.chapter + .chapter { margin-top: 48px; }
+img { max-width: 100%; height: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 8px; border-bottom: 1px solid #ccc; text-align: left; }
+pre { padding: 12px; background: #f3f3f3; white-space: pre-wrap; overflow-wrap: anywhere; }
+code { font-family: Consolas, "Liberation Mono", monospace; }
+blockquote { margin-left: 0; padding-left: 16px; border-left: 3px solid #aaa; }
+@media print {
+  main { max-width: none; margin: 0; padding: 0; }
+  .chapter + .chapter { break-before: page; margin-top: 0; }
+}

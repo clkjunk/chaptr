@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mdoc"
+version = "0.1.0"
+description = "Build independent Markdown document projects with shared variables and CSS themes."
+requires-python = ">=3.11"
+dependencies = ["markdown-it-py>=3,<5", "PyYAML>=6,<7"]
+
+[project.optional-dependencies]
+pdf = ["WeasyPrint>=68,<70"]
+dev = ["pytest>=8,<10"]
+
+[project.scripts]
+mdoc = "mdoc.cli:main"
+
+[tool.setuptools]
+packages = ["mdoc", "mdoc_docs"]
+
+[tool.setuptools.package-dir]
+mdoc = "src/mdoc"
+mdoc_docs = "docs"
+
+[tool.setuptools.package-data]
+mdoc = ["themes/*.css", "manual.txt"]
+mdoc_docs = ["*.md", "*.yaml", "*.css"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

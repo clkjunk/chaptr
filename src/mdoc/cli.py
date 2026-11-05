@@ -1,0 +1,255 @@
+import argparse
+import html
+import re
+import sys
+from importlib.resources import files
+from pathlib import Path
+from urllib.parse import unquote, urlsplit
+
+import yaml
+from markdown_it import MarkdownIt
+
+
+class BuildError(ValueError):
+    pass
+
+
+def substitute(source: str, variables: dict[str, str], filename: Path) -> str:
+    lines = source.splitlines(keepends=True)
+    protected = set()
+    for token in MarkdownIt().parse(source):
+        if token.type in {"fence", "code_block"} and token.map:
+            protected.update(range(*token.map))
+    pattern = re.compile(r"\$\$|\$([A-Za-z_][A-Za-z0-9_]*)")
+
+    def replace(match: re.Match[str], line_number: int) -> str:
+        name = match.group(1)
+        if name is None:
+            return "$"
+        if name not in variables:
+            raise BuildError(f"{filename}:{line_number}: undefined variable ${name}")
+        return variables[name]
+
+    result = []
+    for line_number, line in enumerate(lines, 1):
+        if line_number - 1 in protected:
+            result.append(line)
+            continue
+        parts = re.split(r"(`+[^`]*`+)", line)
+        result.append("".join(
+            part if index % 2 else pattern.sub(
+                lambda match: replace(match, line_number), part
+            )
+            for index, part in enumerate(parts)
+        ))
+    return "".join(result)
+
+
+def load_config(path: Path) -> dict:
+    config = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(config, dict):
+        raise BuildError("Configuration must be a YAML mapping.")
+    chapters = config.get("files")
+    if not isinstance(chapters, list) or not chapters or not all(
+        isinstance(chapter, str) for chapter in chapters
+    ):
+        raise BuildError("files must be a nonempty list of Markdown paths.")
+    variables = config.get("variables", {})
+    if not isinstance(variables, dict) or not all(
+        isinstance(name, str)
+        and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name)
+        and isinstance(value, (str, int, float, bool))
+        for name, value in variables.items()
+    ):
+        raise BuildError("variables must map valid names to scalar values.")
+    for name in ("title", "theme", "output", "stylesheet"):
+        if name in config and not isinstance(config[name], str):
+            raise BuildError(f"{name} must be a string.")
+    return config
+
+
+def theme_css(root: Path, name: str, stylesheet: str | None) -> str:
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", name):
+        raise BuildError("theme must be a simple name, such as modern or vintage.")
+    bundled = files("mdoc").joinpath("themes")
+    local = root / "themes" / f"{name}.css"
+    theme = local if local.is_file() else bundled.joinpath(f"{name}.css")
+    if not theme.is_file():
+        raise BuildError(f"Unknown theme: {name}")
+    css = bundled.joinpath("base.css").read_text(encoding="utf-8")
+    css += "\n" + theme.read_text(encoding="utf-8")
+    if stylesheet:
+        css += "\n" + (root / stylesheet).read_text(encoding="utf-8")
+    return css
+
+
+def render_chapter(source: str, path: Path) -> str:
+    parser = MarkdownIt("commonmark", {"html": False}).enable("table")
+    tokens = parser.parse(source)
+    for token in tokens:
+        for child in token.children or []:
+            attribute = "src" if child.type == "image" else "href" if child.type == "link_open" else None
+            if attribute:
+                target = child.attrGet(attribute)
+                if target:
+                    url = urlsplit(target)
+                    if not url.scheme and not url.netloc and url.path:
+                        resolved = (path.parent / unquote(url.path)).resolve().as_uri()
+                        if url.query:
+                            resolved += "?" + url.query
+                        if url.fragment:
+                            resolved += "#" + url.fragment
+                        child.attrSet(attribute, resolved)
+    return parser.renderer.render(tokens, parser.options, {})
+
+
+def build(config_path: Path, format_name: str = "html", theme: str | None = None) -> Path:
+    config_path = config_path.resolve()
+    root = config_path.parent
+    config = load_config(config_path)
+    variables = {name: str(value) for name, value in config.get("variables", {}).items()}
+    chapters = []
+    sections = []
+    for filename in config["files"]:
+        path = root / filename
+        source = substitute(path.read_text(encoding="utf-8"), variables, path)
+        chapters.append(source.rstrip())
+        if format_name != "markdown":
+            sections.append('<section class="chapter">' + render_chapter(source, path) + "</section>")
+    output = root / config.get("output", "build")
+    suffix = {"markdown": "md", "html": "html", "pdf": "pdf"}[format_name]
+    destination = output / f"document.{suffix}"
+    if format_name == "markdown":
+        content = "\n\n".join(chapters) + "\n"
+    else:
+        css = theme_css(root, theme or config.get("theme", "modern"), config.get("stylesheet"))
+        title = html.escape(config.get("title", "Document"))
+        content = (
+            '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            f"<title>{title}</title><style>{css}</style></head>"
+            f'<body><main>{"".join(sections)}</main></body></html>\n'
+        )
+    if format_name == "pdf":
+        try:
+            from weasyprint import HTML
+        except (ImportError, OSError) as error:
+            raise BuildError(
+                "PDF requires the pdf extra and WeasyPrint's native libraries. "
+                "Run 'mdoc help' for PDF requirements. " + str(error)
+            ) from error
+        output.mkdir(parents=True, exist_ok=True)
+        HTML(string=content, base_url=str(root)).write_pdf(destination)
+    else:
+        output.mkdir(parents=True, exist_ok=True)
+        destination.write_text(content, encoding="utf-8")
+    return destination
+
+
+def init_project(directory: Path) -> Path:
+    root = directory.resolve()
+    starter_files = {
+        resource.name: resource.read_text(encoding="utf-8")
+        for resource in files("mdoc_docs").iterdir()
+        if resource.is_file() and Path(resource.name).suffix in {".md", ".yaml", ".css"}
+    }
+    starter_files[".gitignore"] = "build/\n"
+    if root.exists() and not root.is_dir():
+        raise BuildError(f"Project directory is not a directory: {root}")
+    conflicts = [
+        name for name in starter_files
+        if (root / name).exists() or (root / name).is_symlink()
+    ]
+    if conflicts:
+        raise BuildError("Refusing to overwrite existing project files: " + ", ".join(conflicts))
+    root.mkdir(parents=True, exist_ok=True)
+    for name, content in starter_files.items():
+        with (root / name).open("x", encoding="utf-8") as destination:
+            destination.write(content)
+    return root / "document.yaml"
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        prog="mdoc",
+        description="Build independent Markdown document projects with variables and CSS themes.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "Examples:\n"
+            "  mdoc init my-document\n"
+            "  mdoc build --format pdf\n"
+            "  mdoc build --config path/to/document.yaml\n"
+            "  mdoc build --help\n\n"
+            "Run 'mdoc help' for the full usage manual."
+        ),
+    )
+    commands = parser.add_subparsers(dest="command", required=True)
+    initializer = commands.add_parser(
+        "init",
+        help="Create an editable project containing mdoc's documentation.",
+        description="Copy mdoc's documentation, configuration, stylesheet and a build-output ignore rule.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "Examples:\n"
+            "  mdoc init\n"
+            "  mdoc init my-document\n\n"
+            "Existing starter files are never overwritten. Read or edit the\n"
+            "documentation sections, then run 'mdoc build' from the project directory.\n"
+            "Initialization does not require PDF dependencies."
+        ),
+    )
+    initializer.add_argument(
+        "directory", nargs="?", type=Path, default=Path("."), metavar="DIRECTORY",
+        help="Project directory to create or use (default: current directory).",
+    )
+    command = commands.add_parser(
+        "build",
+        help="Build ordered chapters from a project configuration.",
+        description="Combine configured Markdown chapters and write one document.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "Examples:\n"
+            "  mdoc build\n"
+            "  mdoc build --format pdf\n"
+            "  mdoc build --config path/to/document.yaml --format markdown\n"
+            "  mdoc build --theme vintage\n\n"
+            "Project paths are relative to the configuration file. Output defaults\n"
+            "to build/document.<extension> within that project; existing output\n"
+            "of the same format is replaced. PDF requires WeasyPrint and its\n"
+            "native libraries. Run 'mdoc help' for configuration and theme details."
+        ),
+    )
+    command.add_argument(
+        "--config", type=Path, default=Path("document.yaml"), metavar="PATH",
+        help="YAML project configuration (default: document.yaml in the current directory).",
+    )
+    command.add_argument(
+        "--format", choices=["markdown", "html", "pdf"], default="html",
+        help="Output format (default: html); PDF requires optional renderer dependencies.",
+    )
+    command.add_argument(
+        "--theme", metavar="NAME",
+        help="Override the configured CSS theme for HTML/PDF; ignored for Markdown.",
+    )
+    commands.add_parser("help", help="Print the full usage manual.")
+    args = parser.parse_args()
+    if args.command == "help":
+        print(files("mdoc").joinpath("manual.txt").read_text(encoding="utf-8"), end="")
+        return 0
+    try:
+        if args.command == "init":
+            config_path = init_project(args.directory)
+            print(f"Initialized project at {config_path.parent}")
+            print("Start with README.md, then edit document.yaml and the Markdown sections.")
+            print(f'Build with: mdoc build --config "{config_path.as_posix()}"')
+            return 0
+        destination = build(args.config, args.format, args.theme)
+    except (BuildError, OSError, yaml.YAMLError) as error:
+        print(f"mdoc: {error}", file=sys.stderr)
+        return 1
+    print(destination)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
