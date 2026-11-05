@@ -43,3 +43,18 @@ Fonts must be available on the rendering machine or supplied as local font asset
 HTML and PDF share CSS, but browser and WeasyPrint support differ. Keep print CSS
 conservative and verify the actual PDF. Relative CSS asset URLs currently resolve
 from the document project's root.
+
+## Document Elements
+
+Use `caption` to style table labels. Their top or bottom placement follows the
+caption's source position. `.front-cover`, `.title-page`, `.author-section`,
+`.contents` and `.back-cover` style the optional document pages.
+
+```css
+caption { color: #24634b; font-size: 10pt; }
+.title-page { text-align: center; }
+.footnotes { font-size: 9pt; }
+```
+
+The base print theme starts each optional page separately. Contents page numbers
+use WeasyPrint's `target-counter` support. Custom themes can override these rules.
