@@ -1,4 +1,12 @@
 title: mdoc Documentation
+subtitle: Markdown document workflow
+author: mdoc contributors
+title_page: true
+table_of_contents: true
+toc_depth: 2
+front_cover: 00-front-cover.md
+author_section: 00-authors.md
+back_cover: 99-back-cover.md
 theme: modern
 stylesheet: styles.css
 output: build
