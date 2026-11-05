@@ -89,11 +89,11 @@ CONFIGURATION
     title_page  Generate a title page; default: false.
     subtitle    Plain-text title-page subtitle; default: empty.
     author      Plain-text title-page author; default: empty.
-    front_cover Markdown file for a front cover; default: none.
+    front_cover Markdown or single-page PDF front cover; default: none.
     author_section Markdown file for author details; default: none.
     table_of_contents Generate linked contents; default: false.
     toc_depth   Contents heading depth, 1 to 6; default: 2.
-    back_cover  Markdown file for a back cover; default: none.
+    back_cover  Markdown or single-page PDF back cover; default: none.
 
 DOCUMENT FEATURES
     Put Table: Caption text in a standalone paragraph directly above or below
@@ -111,6 +111,20 @@ DOCUMENT FEATURES
     Title pages, contents and numbered captions are generated for HTML/PDF only.
     Merged Markdown includes authored covers and author sections and preserves
     caption and footnote source syntax.
+
+PDF COVERS
+    Configure front_cover: covers/front.pdf or back_cover: covers/back.pdf.
+    PDF builds attach those pages around the generated content using pypdf.
+    Artwork and fonts are preserved without scaling or generated page margins.
+    Either cover is optional and Markdown and PDF covers can be mixed.
+
+    Each PDF cover must be unencrypted, contain exactly one page and match the
+    adjacent generated page's size within one PDF point. Invalid covers fail
+    before existing output is replaced. Cover files cannot be the output file.
+
+    An inserted front cover counts as page 1; generated contents page numbers
+    match the final PDF's physical pages. Links and bookmarks are preserved.
+    HTML and Markdown builds omit PDF covers. Bleed and trim setup is not provided.
 
 VARIABLES
     Write $product_name in Markdown to insert its configured value.
@@ -142,6 +156,7 @@ OUTPUT
     Open HTML directly in a browser.
 
 PDF REQUIREMENTS
+    The pdf extra includes WeasyPrint and pypdf for PDF cover assembly.
     Developer installation from the application repository:
         python -m pip install -e ".[pdf]"
 
