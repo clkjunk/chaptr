@@ -58,3 +58,4 @@ caption { color: #24634b; font-size: 10pt; }
 
 The base print theme starts each optional page separately. Contents page numbers
 use WeasyPrint's `target-counter` support. Custom themes can override these rules.
+External PDF covers keep their own styling; theme rules apply to generated pages.
