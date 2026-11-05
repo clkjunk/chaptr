@@ -4,7 +4,7 @@
 
 - Python 3.11 or newer.
 - The mdoc package, installed in a Python environment accessible from your terminal.
-- `markdown-it-py` and `PyYAML`, installed automatically with mdoc.
+- `markdown-it-py`, `mdit-py-plugins` and `PyYAML`, installed automatically with mdoc.
 - Windows, macOS or Linux. Document source files use UTF-8.
 
 The installed command must be available on `PATH` or called by its full path.
