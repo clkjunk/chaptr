@@ -8,11 +8,28 @@ h1, h2, h3 { break-after: avoid; }
 .chapter + .chapter { margin-top: 48px; }
 img { max-width: 100%; height: auto; }
 table { width: 100%; border-collapse: collapse; }
+caption { padding: 8px 0; text-align: left; font-weight: bold; }
+.document-page { margin: 48px 0; }
+.title-page { min-height: 600px; display: flex; flex-direction: column; justify-content: center; text-align: center; }
+.title-page h1 { border: 0; }
+.subtitle { font-size: 16pt; }
+.contents ol { list-style: none; padding: 0; }
+.contents li { margin: 4px 0; }
+.toc-level-2 { padding-left: 20px; }
+.toc-level-3 { padding-left: 40px; }
+.toc-level-4, .toc-level-5, .toc-level-6 { padding-left: 60px; }
+.footnotes { font-size: 9pt; }
+.footnote-ref, .footnote-backref { text-decoration: none; }
 th, td { padding: 8px; border-bottom: 1px solid #ccc; text-align: left; }
 pre { padding: 12px; background: #f3f3f3; white-space: pre-wrap; overflow-wrap: anywhere; }
 code { font-family: Consolas, "Liberation Mono", monospace; }
 blockquote { margin-left: 0; padding-left: 16px; border-left: 3px solid #aaa; }
 @media print {
   main { max-width: none; margin: 0; padding: 0; }
+  .document-page { break-after: page; margin: 0; }
+  .title-page { min-height: 220mm; }
+  .back-cover { break-before: page; break-after: auto; }
+  .contents a::after { content: leader('.') target-counter(attr(href), page); }
+  .document-notes { break-before: page; }
   .chapter + .chapter { break-before: page; margin-top: 0; }
 }
