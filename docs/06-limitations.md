@@ -9,6 +9,8 @@
 - Merged Markdown retains original link paths. Relative assets may need path
   adjustments before the merged file is used elsewhere.
 - Generated title pages, contents and numbered captions apply to HTML/PDF only.
+- PDF covers are omitted from HTML and Markdown builds. They must be unencrypted
+  single-page files matching the generated page size. Bleed and trim setup is not provided.
 - Relative CSS asset URLs resolve from the project root.
 - Browser and WeasyPrint CSS support differ; HTML preview does not prove PDF layout.
 - PDF still requires native libraries and self-contained releases are not available.
