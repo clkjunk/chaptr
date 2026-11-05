@@ -1,3 +1,14 @@
+def test_markdown_footnotes(tmp_path):
+    config = project(tmp_path / "project", "Alpha")
+    (config.parent / "chapter.md").write_text(
+        "# Notes\n\nA reference.[^source]\n\n[^source]: Supporting **detail**.\n",
+        encoding="utf-8",
+    )
+    rendered = build(config).read_text(encoding="utf-8")
+    assert 'class="footnote-ref"' in rendered
+    assert 'id="fn1"' in rendered
+    assert "Supporting <strong>detail</strong>." in rendered
+    assert "[^source]" in build(config, "markdown").read_text(encoding="utf-8")
 from pathlib import Path
 
 import pytest
@@ -45,9 +56,9 @@ def test_init_cli_creates_buildable_project(directory, tmp_path, monkeypatch, ca
             assert (root / source.name).read_bytes() == source.read_bytes()
     rendered = build(config).read_text(encoding="utf-8")
     assert "<title>mdoc Documentation</title>" in rendered
-    assert "<h1>User Workflow</h1>" in rendered
-    assert "<h1>Configuration and Variables</h1>" in rendered
-    assert "<h1>Roadmap</h1>" in rendered
+    assert '<h1 id="user-workflow">User Workflow</h1>' in rendered
+    assert '<h1 id="configuration-and-variables">Configuration and Variables</h1>' in rendered
+    assert '<h1 id="roadmap">Roadmap</h1>' in rendered
     assert "# User Workflow" in build(config, "markdown").read_text(encoding="utf-8")
 
 
@@ -55,6 +66,7 @@ def test_init_cli_creates_buildable_project(directory, tmp_path, monkeypatch, ca
     "document.yaml", "README.md", "01-requirements.md", "02-workflow.md",
     "03-configuration.md", "04-themes.md", "05-pdf.md", "06-limitations.md",
     "07-roadmap.md", "styles.css", ".gitignore",
+    "00-front-cover.md", "00-authors.md", "99-back-cover.md",
 ])
 def test_init_refuses_collisions_before_writing(filename, tmp_path):
     existing = tmp_path / filename
@@ -105,7 +117,7 @@ def test_independent_projects_from_other_directory(tmp_path, monkeypatch):
     second = project(tmp_path / "second", "Beta")
     monkeypatch.chdir(tmp_path)
     assert build(first, "markdown").read_text(encoding="utf-8") == "# Alpha\n\n`$product` costs $20.\n"
-    assert "<h1>Beta</h1>" in build(second).read_text(encoding="utf-8")
+    assert '<h1 id="beta">Beta</h1>' in build(second).read_text(encoding="utf-8")
     assert build(first).parent == first.parent / "build"
 
 
@@ -150,3 +162,98 @@ def test_invalid_configuration_and_unknown_theme(tmp_path):
     config.write_text("files: chapter.md\n", encoding="utf-8")
     with pytest.raises(BuildError, match="nonempty list"):
         build(config)
+
+
+def test_document_numbering_and_cross_chapter_footnotes(tmp_path):
+    config = project(tmp_path / "project", "Alpha")
+    root = config.parent
+    (root / "chapter.md").write_text(
+        "# Repeat\n\nA note.[^detail]\n\nTable: First **caption**\n\n| A |\n| --- |\n| 1 |\n",
+        encoding="utf-8",
+    )
+    (root / "second.md").write_text(
+        "# Repeat\n\n| B |\n| --- |\n| 2 |\n\nTable: Second caption\n\n[^detail]: Shared note.\n",
+        encoding="utf-8",
+    )
+    settings = yaml.safe_load(config.read_text(encoding="utf-8"))
+    settings.update({"files": ["chapter.md", "second.md"], "table_of_contents": True})
+    config.write_text(yaml.safe_dump(settings), encoding="utf-8")
+    rendered = build(config).read_text(encoding="utf-8")
+    assert 'href="#repeat"' in rendered
+    assert 'href="#repeat-2"' in rendered
+    assert 'id="repeat-2"' in rendered
+    assert '<caption style="caption-side: top">Table 1. First <strong>caption</strong></caption>' in rendered
+    assert '<caption style="caption-side: bottom">Table 2. Second caption</caption>' in rendered
+    assert "Shared note." in rendered
+    assert rendered.count('id="fn1"') == 1
+    settings["files"].reverse()
+    config.write_text(yaml.safe_dump(settings), encoding="utf-8")
+    reordered = build(config).read_text(encoding="utf-8")
+    assert 'Table 1. Second caption' in reordered
+    assert 'Table 2. First <strong>caption</strong>' in reordered
+
+
+def test_optional_document_pages(tmp_path):
+    config = project(tmp_path / "project", "Alpha")
+    root = config.parent
+    (root / "chapter.md").write_text(
+        "# $product\n\nA note.[^source]\n\n[^source]: Supporting detail.\n", encoding="utf-8"
+    )
+    for name in ("front", "authors", "back"):
+        (root / f"{name}.md").write_text(f"# {name}\n\nPage content.\n", encoding="utf-8")
+    settings = yaml.safe_load(config.read_text(encoding="utf-8"))
+    settings.update({
+        "title": "A & B", "subtitle": "A guide", "author": "An Author", "title_page": True,
+        "table_of_contents": True, "front_cover": "front.md", "back_cover": "back.md",
+        "author_section": "authors.md",
+    })
+    config.write_text(yaml.safe_dump(settings), encoding="utf-8")
+    rendered = build(config).read_text(encoding="utf-8")
+    roles = ['class="front-cover document-page"', 'class="title-page document-page"',
+             'class="author-section document-page"', 'class="contents document-page"',
+             'class="chapter"', 'class="document-notes"', 'class="back-cover document-page"']
+    positions = [rendered.index(role) for role in roles]
+    assert positions == sorted(positions)
+    assert "A &amp; B" in rendered
+    assert "An Author" in rendered
+    assert 'href="#authors"' not in rendered
+    merged = build(config, "markdown").read_text(encoding="utf-8")
+    assert merged.index("# front") < merged.index("# Alpha") < merged.index("# back")
+
+
+@pytest.mark.parametrize("field,value", [("title_page", "yes"), ("table_of_contents", 1),
+                                         ("toc_depth", 0), ("toc_depth", True), ("front_cover", 42)])
+def test_invalid_document_options(field, value, tmp_path):
+    config = project(tmp_path / "project", "Alpha")
+    settings = yaml.safe_load(config.read_text(encoding="utf-8"))
+    settings[field] = value
+    config.write_text(yaml.safe_dump(settings), encoding="utf-8")
+    with pytest.raises(BuildError, match=field):
+        build(config)
+
+
+def test_heading_ids_do_not_collide_with_tables_or_notes(tmp_path):
+    config = project(tmp_path / "project", "Alpha")
+    (config.parent / "chapter.md").write_text(
+        "# fn1\n\n# Table 1\n\nTable: Values\n\n| A |\n| --- |\n| 1 |\n\n"
+        "A note.[^detail]\n\n[^detail]: Supporting text.\n", encoding="utf-8",
+    )
+    rendered = build(config).read_text(encoding="utf-8")
+    assert '<h1 id="fn1-2">fn1</h1>' in rendered
+    assert '<h1 id="table-1-2">Table 1</h1>' in rendered
+    assert rendered.count('id="fn1"') == 1
+    assert rendered.count('id="table-1"') == 1
+    assert 'class="contents document-page"' not in rendered
+    assert 'class="title-page document-page"' not in rendered
+
+
+def test_caption_stays_in_its_source_file(tmp_path):
+    config = project(tmp_path / "project", "Alpha")
+    (config.parent / "chapter.md").write_text("| A |\n| --- |\n| 1 |\n", encoding="utf-8")
+    (config.parent / "second.md").write_text("Table: Separate paragraph\n", encoding="utf-8")
+    settings = yaml.safe_load(config.read_text(encoding="utf-8"))
+    settings["files"].append("second.md")
+    config.write_text(yaml.safe_dump(settings), encoding="utf-8")
+    rendered = build(config).read_text(encoding="utf-8")
+    assert "<caption" not in rendered
+    assert "<p>Table: Separate paragraph</p>" in rendered
