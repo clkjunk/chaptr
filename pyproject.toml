@@ -7,7 +7,7 @@ name = "mdoc"
 version = "0.1.0"
 description = "Build independent Markdown document projects with shared variables and CSS themes."
 requires-python = ">=3.11"
-dependencies = ["markdown-it-py>=3,<5", "PyYAML>=6,<7"]
+dependencies = ["markdown-it-py>=3,<5", "mdit-py-plugins>=0.5,<1", "PyYAML>=6,<7"]
 
 [project.optional-dependencies]
 pdf = ["WeasyPrint>=68,<70"]
