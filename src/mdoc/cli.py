@@ -96,11 +96,16 @@ def build(config_path: Path, format_name: str = "html", theme: str | None = None
     variables = {name: str(value) for name, value in config.get("variables", {}).items()}
     chapters = []
     source_files = []
+    pdf_covers = {
+        field: root / config[field]
+        for field in ("front_cover", "back_cover")
+        if config.get(field) and Path(config[field]).suffix.lower() == ".pdf"
+    }
     for field, role in (("front_cover", "front-cover"), ("author_section", "author-section")):
-        if config.get(field):
+        if config.get(field) and field not in pdf_covers:
             source_files.append((config[field], role))
     source_files.extend((filename, "chapter") for filename in config["files"])
-    if config.get("back_cover"):
+    if config.get("back_cover") and "back_cover" not in pdf_covers:
         source_files.append((config["back_cover"], "back-cover"))
     for filename, role in source_files:
         path = root / filename
@@ -109,10 +114,14 @@ def build(config_path: Path, format_name: str = "html", theme: str | None = None
     output = root / config.get("output", "build")
     suffix = {"markdown": "md", "html": "html", "pdf": "pdf"}[format_name]
     destination = output / f"document.{suffix}"
+    if format_name == "pdf" and any(path.resolve() == destination.resolve() for path in pdf_covers.values()):
+        raise BuildError("A PDF cover cannot also be the output document. Choose a different cover path or output directory.")
     if format_name == "markdown":
         content = "\n\n".join(source.rstrip() for source, path, role in chapters) + "\n"
     else:
         css = theme_css(root, theme or config.get("theme", "modern"), config.get("stylesheet"))
+        if format_name == "pdf" and "front_cover" in pdf_covers:
+            css += "\n@page:first { counter-reset: page 2; }\n"
         title = html.escape(config.get("title", "Document"))
         content = (
             '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">'
@@ -128,8 +137,18 @@ def build(config_path: Path, format_name: str = "html", theme: str | None = None
                 "PDF requires the pdf extra and WeasyPrint's native libraries. "
                 "Run 'mdoc help' for PDF requirements. " + str(error)
             ) from error
+        document = HTML(string=content, base_url=str(root)).write_pdf()
+        if pdf_covers:
+            try:
+                from mdoc.pdf import CoverError, merge_covers
+            except ImportError as error:
+                raise BuildError("PDF covers require pypdf. Install mdoc's pdf extra.") from error
+            try:
+                document = merge_covers(document, pdf_covers)
+            except CoverError as error:
+                raise BuildError(str(error)) from error
         output.mkdir(parents=True, exist_ok=True)
-        HTML(string=content, base_url=str(root)).write_pdf(destination)
+        destination.write_bytes(document)
     else:
         output.mkdir(parents=True, exist_ok=True)
         destination.write_text(content, encoding="utf-8")
