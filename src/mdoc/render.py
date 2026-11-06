@@ -5,8 +5,14 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 from markdown_it import MarkdownIt
+from markdown_it.renderer import RendererHTML
 from markdown_it.token import Token
+from mdit_py_plugins.container import container_plugin
 from mdit_py_plugins.footnote import footnote_plugin
+
+
+def render_monster(renderer: RendererHTML, tokens: list[Token], index: int, options: dict, environment: dict) -> str:
+    return '<article class="monster-card">\n' if tokens[index].nesting == 1 else '</article>\n'
 
 
 def table_captions(tokens: list[Token], offsets: list[int]) -> None:
@@ -58,6 +64,7 @@ def table_captions(tokens: list[Token], offsets: list[int]) -> None:
 
 def render_document(chapters: list[tuple[str, Path, str]], config: dict) -> str:
     parser = MarkdownIt("commonmark", {"html": False}).enable("table").use(footnote_plugin)
+    parser.use(container_plugin, "monster", render=render_monster)
     offsets = []
     sources = []
     line_number = 0
@@ -79,7 +86,10 @@ def render_document(chapters: list[tuple[str, Path, str]], config: dict) -> str:
             identifiers.update((f"fn{note_number}", f"fnref{note_number}"))
     owner = 0
     in_notes = False
+    monster_depth = 0
     for index, token in enumerate(tokens):
+        if token.type in {"container_monster_open", "container_monster_close"}:
+            monster_depth += token.nesting
         if token.type == "footnote_block_open":
             in_notes = True
         if not in_notes and token.map:
@@ -95,7 +105,7 @@ def render_document(chapters: list[tuple[str, Path, str]], config: dict) -> str:
                 suffix += 1
             identifiers.add(identifier)
             token.attrSet("id", identifier)
-            if chapters[owner][2] == "chapter":
+            if chapters[owner][2] == "chapter" and not monster_depth:
                 headings.append((int(token.tag[1]), text, identifier))
         asset_owner = owner
         if in_notes and token.map:

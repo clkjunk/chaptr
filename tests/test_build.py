@@ -112,6 +112,36 @@ def project(root: Path, product: str) -> Path:
     return config
 
 
+@pytest.mark.parametrize("section", ["Actions", "Spells", "Reactions", "Custom Abilities"])
+def test_monster_container(tmp_path, section):
+    config = project(tmp_path / "project", "Alpha")
+    source = (
+        "# Encounter\n\n::: monster\n## Example Creature\n\n*Medium humanoid*\n\n"
+        "**AC:** 12  \n**HP:** 40\n\n| STR | DEX |\n| --- | --- |\n| 9 | 14 |\n\n"
+        f"### {section}\n\n**Strike.** Deal damage.\n\n![Reference](reference.png)\n\n"
+        "<script>unsafe()</script>\n:::\n\n## After the block\n"
+    )
+    (config.parent / "chapter.md").write_text(source, encoding="utf-8")
+    settings = yaml.safe_load(config.read_text(encoding="utf-8"))
+    settings["table_of_contents"] = True
+    settings["toc_depth"] = 3
+    config.write_text(yaml.safe_dump(settings), encoding="utf-8")
+    rendered = build(config).read_text(encoding="utf-8")
+    assert '<article class="monster-card">' in rendered
+    assert '<h2 id="example-creature">Example Creature</h2>' in rendered
+    assert f'>{section}</h3>' in rendered
+    assert '<strong>Strike.</strong> Deal damage.' in rendered
+    assert '<table>' in rendered
+    assert (config.parent / "reference.png").as_uri() in rendered
+    assert '<script>' not in rendered
+    assert '&lt;script&gt;unsafe()&lt;/script&gt;' in rendered
+    assert 'href="#example-creature"' not in rendered
+    assert 'href="#after-the-block"' in rendered
+    assert '</article>\n<h2 id="after-the-block">' in rendered
+    assert '::: monster' not in rendered
+    assert source == build(config, "markdown").read_text(encoding="utf-8")
+
+
 def test_independent_projects_from_other_directory(tmp_path, monkeypatch):
     first = project(tmp_path / "first", "Alpha")
     second = project(tmp_path / "second", "Beta")

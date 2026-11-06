@@ -24,6 +24,28 @@ th, td { padding: 8px; border-bottom: 1px solid #ccc; text-align: left; }
 pre { padding: 12px; background: #f3f3f3; white-space: pre-wrap; overflow-wrap: anywhere; }
 code { font-family: Consolas, "Liberation Mono", monospace; }
 blockquote { margin-left: 0; padding-left: 16px; border-left: 3px solid #aaa; }
+.monster-card {
+  --monster-accent: #8b3439;
+  --monster-rule: #c8cecb;
+  max-width: 118mm;
+  margin: 24px 0;
+  padding: 16px;
+  border: 1px solid var(--monster-rule);
+  border-top: 4px solid var(--monster-accent);
+  border-radius: 4px;
+  background: #fff;
+  color: #242824;
+  font-size: 10pt;
+  line-height: 1.45;
+}
+.monster-card h2 { margin: 0; padding: 0; border: 0; color: var(--monster-accent); font-size: 17pt; line-height: 1.2; }
+.monster-card > h2 + p { margin: 4px 0 16px; color: #555e58; font-size: 9pt; }
+.monster-card p { margin: 8px 0; }
+.monster-card h3 { margin: 16px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--monster-rule); color: var(--monster-accent); font-size: 11pt; }
+.monster-card table { margin: 14px 0; table-layout: fixed; font-size: 9pt; }
+.monster-card th, .monster-card td { padding: 6px 2px; border: 0; text-align: center; overflow-wrap: anywhere; }
+.monster-card th { background: #eef1ee; color: #39463f; font-size: 8pt; }
+.monster-card td { border-bottom: 1px solid var(--monster-rule); }
 @media print {
   main { max-width: none; margin: 0; padding: 0; }
   .document-page { break-after: page; margin: 0; }
@@ -32,4 +54,6 @@ blockquote { margin-left: 0; padding-left: 16px; border-left: 3px solid #aaa; }
   .contents a::after { content: leader('.') target-counter(attr(href), page); }
   .document-notes { break-before: page; }
   .chapter + .chapter { break-before: page; margin-top: 0; }
+  .monster-card { break-inside: avoid; }
+  .monster-card p { break-inside: avoid; }
 }
