@@ -6,6 +6,8 @@ editable themes. Produce merged Markdown, styled HTML or PDF.
 ## Usage
 
 mdoc runs in your terminal. Install it once and use it across document projects.
+See [installation instructions](docs/01-requirements.md#installation) for the
+source checkout and GitHub release wheel options.
 
 | Command | Purpose |
 | --- | --- |
@@ -36,7 +38,7 @@ mdoc build --config docs/document.yaml
 - Bundled themes, project-local overrides and additional stylesheets.
 - Command help and a bundled usage manual.
 
-Self-contained releases are not available yet; PDF requires native libraries.
+PDF requires native libraries.
 
 Planned: [named document templates](docs/07-roadmap.md), including roleplaying
 scenarios and workplace accessibility documents. Template selection is not available yet.
