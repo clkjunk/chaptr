@@ -14,18 +14,18 @@ from pathlib import Path
 import pytest
 import yaml
 
-from mdoc.cli import BuildError, build, init_project, main, substitute
+from chaptr.cli import BuildError, build, init_project, main, substitute
 
 
 @pytest.mark.parametrize("arguments, expected", [
-    (["--help"], ["mdoc help", "build", "init", "Examples:"]),
+    (["--help"], ["chaptr help", "build", "init", "Examples:"]),
     (["init", "--help"], ["DIRECTORY", "current directory", "never overwritten"]),
     (["build", "--help"], ["--config PATH", "default: html", "--theme NAME", "native libraries"]),
     (["help"], ["SYNOPSIS", "CONFIGURATION", "EXIT STATUS", "LIMITATIONS"]),
 ])
 def test_cli_help_without_a_project(arguments, expected, tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr("sys.argv", ["mdoc", *arguments])
+    monkeypatch.setattr("sys.argv", ["chaptr", *arguments])
     if arguments == ["help"]:
         assert main() == 0
     else:
@@ -41,7 +41,7 @@ def test_cli_help_without_a_project(arguments, expected, tmp_path, monkeypatch, 
 @pytest.mark.parametrize("directory", [None, "nested/My Document"])
 def test_init_cli_creates_buildable_project(directory, tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
-    arguments = ["mdoc", "init"] + ([directory] if directory else [])
+    arguments = ["chaptr", "init"] + ([directory] if directory else [])
     monkeypatch.setattr("sys.argv", arguments)
     assert main() == 0
     root = tmp_path / directory if directory else tmp_path
@@ -55,7 +55,7 @@ def test_init_cli_creates_buildable_project(directory, tmp_path, monkeypatch, ca
         if source.is_file() and source.suffix in {".md", ".yaml", ".css"}:
             assert (root / source.name).read_bytes() == source.read_bytes()
     rendered = build(config).read_text(encoding="utf-8")
-    assert "<title>mdoc Documentation</title>" in rendered
+    assert "<title>chaptr Documentation</title>" in rendered
     assert '<h1 id="user-workflow">User Workflow</h1>' in rendered
     assert '<h1 id="configuration-and-variables">Configuration and Variables</h1>' in rendered
     assert '<h1 id="roadmap">Roadmap</h1>' in rendered
@@ -84,7 +84,7 @@ def test_init_keeps_unrelated_files_and_reports_repeat_init(tmp_path, monkeypatc
     init_project(tmp_path)
     assert existing.read_text(encoding="utf-8") == "Personal notes"
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr("sys.argv", ["mdoc", "init"])
+    monkeypatch.setattr("sys.argv", ["chaptr", "init"])
     assert main() == 1
     captured = capsys.readouterr()
     assert "Refusing to overwrite" in captured.err

@@ -1,6 +1,6 @@
-title: mdoc Documentation
+title: chaptr Documentation
 subtitle: Markdown document workflow
-author: mdoc contributors
+author: chaptr contributors
 title_page: true
 table_of_contents: true
 toc_depth: 2
@@ -19,5 +19,5 @@ files:
   - 06-limitations.md
   - 07-roadmap.md
 variables:
-  app_name: mdoc
-  app_version: "0.1.0"
+  app_name: chaptr
+  app_version: "0.1.1"

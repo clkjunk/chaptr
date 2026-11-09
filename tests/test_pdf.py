@@ -6,8 +6,8 @@ import yaml
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import NameObject, TextStringObject
 
-from mdoc.cli import BuildError, build
-from mdoc.pdf import CoverError, merge_covers
+from chaptr.cli import BuildError, build
+from chaptr.pdf import CoverError, merge_covers
 from test_build import project
 
 

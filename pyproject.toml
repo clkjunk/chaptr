@@ -3,9 +3,10 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mdoc"
-version = "0.1.0"
+name = "chaptr"
+version = "0.1.1"
 description = "Build independent Markdown document projects with shared variables and CSS themes."
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = ["markdown-it-py>=3,<5", "mdit-py-plugins>=0.5,<1", "PyYAML>=6,<7"]
 
@@ -14,18 +15,19 @@ pdf = ["WeasyPrint>=68,<70", "pypdf>=6,<7"]
 dev = ["pytest>=8,<10", "pypdf>=6,<7"]
 
 [project.scripts]
-mdoc = "mdoc.cli:main"
+chaptr = "chaptr.cli:main"
 
 [tool.setuptools]
-packages = ["mdoc", "mdoc_docs"]
+include-package-data = false
+packages = ["chaptr", "chaptr_docs"]
 
 [tool.setuptools.package-dir]
-mdoc = "src/mdoc"
-mdoc_docs = "docs"
+chaptr = "src/chaptr"
+chaptr_docs = "docs"
 
 [tool.setuptools.package-data]
-mdoc = ["themes/*.css", "manual.txt"]
-mdoc_docs = ["*.md", "*.yaml", "*.css"]
+chaptr = ["themes/*.css", "manual.txt"]
+chaptr_docs = ["*.md", "*.yaml", "*.css"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

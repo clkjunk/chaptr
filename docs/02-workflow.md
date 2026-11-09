@@ -6,16 +6,16 @@ whenever the content changes.
 ## Create a Project
 
 ```sh
-mdoc init my-document
+chaptr init my-document
 cd my-document
 ```
 
-Or run `mdoc init` inside the directory you want to use. Initialization is
+Or run `chaptr init` inside the directory you want to use. Initialization is
 noninteractive. Its default content is $app_name's own documentation: the section
 files, `README.md`, `document.yaml` and `styles.css`, plus a `.gitignore` that
 excludes generated build output. The files come bundled with the CLI.
 
-Open `README.md` to read the documentation or run `mdoc build` to render it.
+Open `README.md` to read the documentation or run `chaptr build` to render it.
 Replace the sections with your own content when ready.
 
 Existing starter files are never overwritten. Conflicts stop initialization
@@ -34,9 +34,9 @@ Named project templates are future work; `init` currently has one default only.
 ## Build
 
 ```sh
-mdoc build
-mdoc build --format markdown
-mdoc build --format pdf
+chaptr build
+chaptr build --format markdown
+chaptr build --format pdf
 ```
 
 The default format is HTML. PDF needs the additional renderer dependencies.
@@ -49,20 +49,20 @@ Open HTML directly in a browser.
 ## Work from Another Directory
 
 ```sh
-mdoc build --config "path/to/my-document/document.yaml"
+chaptr build --config "path/to/my-document/document.yaml"
 ```
 
-Without `--config`, mdoc uses `document.yaml` in the current directory.
+Without `--config`, chaptr uses `document.yaml` in the current directory.
 All configured paths are resolved relative to that YAML file. Quote paths
 containing spaces.
 
 ## Get Help
 
 ```sh
-mdoc --help
-mdoc init --help
-mdoc build --help
-mdoc help
+chaptr --help
+chaptr init --help
+chaptr build --help
+chaptr help
 ```
 
 Exit codes are `0` for success, `1` for initialization or build errors and `2`

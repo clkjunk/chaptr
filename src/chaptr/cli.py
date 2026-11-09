@@ -8,7 +8,7 @@ from pathlib import Path
 import yaml
 from markdown_it import MarkdownIt
 
-from mdoc.render import render_document
+from chaptr.render import render_document
 
 
 class BuildError(ValueError):
@@ -77,7 +77,7 @@ def load_config(path: Path) -> dict:
 def theme_css(root: Path, name: str, stylesheet: str | None) -> str:
     if not re.fullmatch(r"[A-Za-z0-9_-]+", name):
         raise BuildError("theme must be a simple name, such as modern or vintage.")
-    bundled = files("mdoc").joinpath("themes")
+    bundled = files("chaptr").joinpath("themes")
     local = root / "themes" / f"{name}.css"
     theme = local if local.is_file() else bundled.joinpath(f"{name}.css")
     if not theme.is_file():
@@ -135,14 +135,14 @@ def build(config_path: Path, format_name: str = "html", theme: str | None = None
         except (ImportError, OSError) as error:
             raise BuildError(
                 "PDF requires the pdf extra and WeasyPrint's native libraries. "
-                "Run 'mdoc help' for PDF requirements. " + str(error)
+                "Run 'chaptr help' for PDF requirements. " + str(error)
             ) from error
         document = HTML(string=content, base_url=str(root)).write_pdf()
         if pdf_covers:
             try:
-                from mdoc.pdf import CoverError, merge_covers
+                from chaptr.pdf import CoverError, merge_covers
             except ImportError as error:
-                raise BuildError("PDF covers require pypdf. Install mdoc's pdf extra.") from error
+                raise BuildError("PDF covers require pypdf. Install chaptr's pdf extra.") from error
             try:
                 document = merge_covers(document, pdf_covers)
             except CoverError as error:
@@ -159,7 +159,7 @@ def init_project(directory: Path) -> Path:
     root = directory.resolve()
     starter_files = {
         resource.name: resource.read_text(encoding="utf-8")
-        for resource in files("mdoc_docs").iterdir()
+        for resource in files("chaptr_docs").iterdir()
         if resource.is_file() and Path(resource.name).suffix in {".md", ".yaml", ".css"}
     }
     starter_files[".gitignore"] = "build/\n"
@@ -180,30 +180,30 @@ def init_project(directory: Path) -> Path:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        prog="mdoc",
+        prog="chaptr",
         description="Build independent Markdown document projects with variables and CSS themes.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Examples:\n"
-            "  mdoc init my-document\n"
-            "  mdoc build --format pdf\n"
-            "  mdoc build --config path/to/document.yaml\n"
-            "  mdoc build --help\n\n"
-            "Run 'mdoc help' for the full usage manual."
+            "  chaptr init my-document\n"
+            "  chaptr build --format pdf\n"
+            "  chaptr build --config path/to/document.yaml\n"
+            "  chaptr build --help\n\n"
+            "Run 'chaptr help' for the full usage manual."
         ),
     )
     commands = parser.add_subparsers(dest="command", required=True)
     initializer = commands.add_parser(
         "init",
-        help="Create an editable project containing mdoc's documentation.",
-        description="Copy mdoc's documentation, configuration, stylesheet and a build-output ignore rule.",
+        help="Create an editable project containing chaptr's documentation.",
+        description="Copy chaptr's documentation, configuration, stylesheet and a build-output ignore rule.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Examples:\n"
-            "  mdoc init\n"
-            "  mdoc init my-document\n\n"
+            "  chaptr init\n"
+            "  chaptr init my-document\n\n"
             "Existing starter files are never overwritten. Read or edit the\n"
-            "documentation sections, then run 'mdoc build' from the project directory.\n"
+            "documentation sections, then run 'chaptr build' from the project directory.\n"
             "Initialization does not require PDF dependencies."
         ),
     )
@@ -218,14 +218,14 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Examples:\n"
-            "  mdoc build\n"
-            "  mdoc build --format pdf\n"
-            "  mdoc build --config path/to/document.yaml --format markdown\n"
-            "  mdoc build --theme vintage\n\n"
+            "  chaptr build\n"
+            "  chaptr build --format pdf\n"
+            "  chaptr build --config path/to/document.yaml --format markdown\n"
+            "  chaptr build --theme vintage\n\n"
             "Project paths are relative to the configuration file. Output defaults\n"
             "to build/document.<extension> within that project; existing output\n"
             "of the same format is replaced. PDF requires WeasyPrint and its\n"
-            "native libraries. Run 'mdoc help' for configuration and theme details."
+            "native libraries. Run 'chaptr help' for configuration and theme details."
         ),
     )
     command.add_argument(
@@ -243,18 +243,18 @@ def main() -> int:
     commands.add_parser("help", help="Print the full usage manual.")
     args = parser.parse_args()
     if args.command == "help":
-        print(files("mdoc").joinpath("manual.txt").read_text(encoding="utf-8"), end="")
+        print(files("chaptr").joinpath("manual.txt").read_text(encoding="utf-8"), end="")
         return 0
     try:
         if args.command == "init":
             config_path = init_project(args.directory)
             print(f"Initialized project at {config_path.parent}")
             print("Start with README.md, then edit document.yaml and the Markdown sections.")
-            print(f'Build with: mdoc build --config "{config_path.as_posix()}"')
+            print(f'Build with: chaptr build --config "{config_path.as_posix()}"')
             return 0
         destination = build(args.config, args.format, args.theme)
     except (BuildError, OSError, yaml.YAMLError) as error:
-        print(f"mdoc: {error}", file=sys.stderr)
+        print(f"chaptr: {error}", file=sys.stderr)
         return 1
     print(destination)
     return 0

@@ -1,10 +1,10 @@
 # PDF Rendering
 
-mdoc renders the configured Markdown to HTML, applies CSS and passes that document
+chaptr renders the configured Markdown to HTML, applies CSS and passes that document
 to WeasyPrint for PDF generation.
 
 ```sh
-mdoc build --format pdf
+chaptr build --format pdf
 ```
 
 ## Requirements
@@ -14,7 +14,7 @@ repository, install it with `python -m pip install -e ".[pdf]"`.
 For a wheel installation, request its extra:
 
 ```sh
-python -m pip install "path/to/mdoc-0.1.0-py3-none-any.whl[pdf]"
+python -m pip install "path/to/chaptr-0.1.1-py3-none-any.whl[pdf]"
 ```
 
 WeasyPrint also needs native system libraries, including Pango. These are compiled
@@ -34,7 +34,7 @@ back_cover: covers/back.pdf
 ```
 
 Either cover is optional. Paths are relative to the project configuration.
-Build with `mdoc build --format pdf` to combine the front cover, generated content
+Build with `chaptr build --format pdf` to combine the front cover, generated content
 and back cover into one PDF. A cover can also be Markdown; mixed types work.
 
 PDF covers retain their artwork, fonts and page content. Generated content margins

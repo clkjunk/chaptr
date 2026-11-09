@@ -8,7 +8,7 @@ projects can replace either theme or define a new name without modifying the app
 Set `theme: vintage` in the configuration or override it for one build:
 
 ```sh
-mdoc build --theme vintage
+chaptr build --theme vintage
 ```
 
 Theme selection applies to HTML and PDF.
