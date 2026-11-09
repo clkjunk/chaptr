@@ -11,6 +11,30 @@ The installed command must be available on `PATH` or called by its full path.
 If installed in a virtual environment, activate it or call its executable directly.
 One installation can serve multiple document projects.
 
+## Installation
+
+To install a wheel from a GitHub release, download `mdoc-0.1.0-py3-none-any.whl`
+and run this command from the directory containing the downloaded file:
+
+```sh
+python -m pip install ./mdoc-0.1.0-py3-none-any.whl
+```
+
+To install from a source checkout, run this from the repository root:
+
+```sh
+python -m pip install .
+```
+
+To build a wheel from the source checkout, install the build tool and run:
+
+```sh
+python -m pip install build
+python -m build --wheel
+```
+
+The wheel is written to `dist/` and can be attached to a GitHub release.
+
 ## PDF Dependencies
 
 PDF additionally requires WeasyPrint and native libraries, including Pango.
@@ -26,4 +50,4 @@ Platform-specific requirements are described in the PDF Rendering section.
 - Run tests with `python -m pytest -q`.
 - The `pdf` extra supplies WeasyPrint and pypdf but does not install native libraries.
 
-A self-contained executable and installer are not available yet.
+A standalone executable and installer are not available; install mdoc with pip.
