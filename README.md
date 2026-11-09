@@ -47,3 +47,7 @@ PDF requires native libraries.
 
 Planned: [named document templates](docs/07-roadmap.md), including roleplaying
 scenarios and workplace accessibility documents. Template selection is not available yet.
+
+## License
+
+Distributed under the MIT License. See [LICENSE](LICENSE).

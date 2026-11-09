@@ -48,7 +48,7 @@ when a GitHub Release is published. Configure a Trusted Publisher for project
 `chaptr` on PyPI with the repository owner and name, workflow filename
 `publish.yml` and environment `pypi`. Create the `pypi` environment under the
 GitHub repository's Settings > Environments. The current repository is
-`clkjunk/mdoc`; update the PyPI publisher if you rename it.
+`clkjunk/chaptr`; update the PyPI publisher if you rename it.
 
 A pending publisher does not reserve the `chaptr` name. The first successful
 upload creates the PyPI project, so publish when the release is ready.

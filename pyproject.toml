@@ -7,6 +7,8 @@ name = "chaptr"
 version = "0.1.1"
 description = "Build independent Markdown document projects with shared variables and CSS themes."
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = ["markdown-it-py>=3,<5", "mdit-py-plugins>=0.5,<1", "PyYAML>=6,<7"]
 
