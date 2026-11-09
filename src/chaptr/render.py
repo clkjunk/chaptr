@@ -11,8 +11,37 @@ from mdit_py_plugins.container import container_plugin
 from mdit_py_plugins.footnote import footnote_plugin
 
 
-def render_monster(renderer: RendererHTML, tokens: list[Token], index: int, options: dict, environment: dict) -> str:
-    return '<article class="monster-card">\n' if tokens[index].nesting == 1 else '</article>\n'
+CLASS_NAME_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_-]*\Z")
+
+
+def validate_class_container(params: str, markup: str) -> bool:
+    parts = params.strip().split()
+    classes = [part for part in parts if part != "toc=exclude"]
+    controls = [part for part in parts if part == "toc=exclude"]
+    return bool(classes) and len(controls) <= 1 and all(
+        CLASS_NAME_PATTERN.fullmatch(class_name) for class_name in classes
+    )
+
+
+def render_class_container(
+    renderer: RendererHTML,
+    tokens: list[Token],
+    index: int,
+    options: dict,
+    environment: dict,
+) -> str:
+    token = tokens[index]
+    if token.nesting == 1:
+        classes = [
+            part for part in token.info.strip().split()
+            if part != "toc=exclude"
+        ]
+        return f'<div class="{html.escape(" ".join(classes), quote=True)}">\n'
+    return "</div>\n"
+
+
+def excludes_toc(token: Token) -> bool:
+    return token.type == "container_class_open" and "toc=exclude" in token.info.split()
 
 
 def table_captions(tokens: list[Token], offsets: list[int]) -> None:
@@ -64,7 +93,12 @@ def table_captions(tokens: list[Token], offsets: list[int]) -> None:
 
 def render_document(chapters: list[tuple[str, Path, str]], config: dict) -> str:
     parser = MarkdownIt("commonmark", {"html": False}).enable("table").use(footnote_plugin)
-    parser.use(container_plugin, "monster", render=render_monster)
+    parser.use(
+        container_plugin,
+        "class",
+        validate=validate_class_container,
+        render=render_class_container,
+    )
     offsets = []
     sources = []
     line_number = 0
@@ -86,10 +120,12 @@ def render_document(chapters: list[tuple[str, Path, str]], config: dict) -> str:
             identifiers.update((f"fn{note_number}", f"fnref{note_number}"))
     owner = 0
     in_notes = False
-    monster_depth = 0
+    toc_exclusion_stack = []
     for index, token in enumerate(tokens):
-        if token.type in {"container_monster_open", "container_monster_close"}:
-            monster_depth += token.nesting
+        if token.type == "container_class_open":
+            toc_exclusion_stack.append(excludes_toc(token))
+        elif token.type == "container_class_close" and toc_exclusion_stack:
+            toc_exclusion_stack.pop()
         if token.type == "footnote_block_open":
             in_notes = True
         if not in_notes and token.map:
@@ -105,7 +141,7 @@ def render_document(chapters: list[tuple[str, Path, str]], config: dict) -> str:
                 suffix += 1
             identifiers.add(identifier)
             token.attrSet("id", identifier)
-            if chapters[owner][2] == "chapter" and not monster_depth:
+            if chapters[owner][2] == "chapter" and not any(toc_exclusion_stack):
                 headings.append((int(token.tag[1]), text, identifier))
         asset_owner = owner
         if in_notes and token.map:

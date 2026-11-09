@@ -4,7 +4,7 @@
 
 - [ ] Define the first roleplaying scenario template around a real project.
 - [ ] Add named templates through `chaptr init --template NAME`, keeping docs as the default.
-- [ ] Prepare scenario sections and styling for dialogue, flavour text and monster stat blocks.
+- [ ] Prepare scenario-specific sections and styling for dialogue and flavour text.
 - [ ] Check two-column layouts and page breaks with real scenario content.
 - [ ] Test initialization, editing and PDF export end to end on the real project.
 

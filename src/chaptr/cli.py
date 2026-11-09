@@ -9,6 +9,7 @@ import yaml
 from markdown_it import MarkdownIt
 
 from chaptr.render import render_document
+from chaptr import theme_manager
 
 
 class BuildError(ValueError):
@@ -78,8 +79,15 @@ def theme_css(root: Path, name: str, stylesheet: str | None) -> str:
     if not re.fullmatch(r"[A-Za-z0-9_-]+", name):
         raise BuildError("theme must be a simple name, such as modern or vintage.")
     bundled = files("chaptr").joinpath("themes")
-    local = root / "themes" / f"{name}.css"
-    theme = local if local.is_file() else bundled.joinpath(f"{name}.css")
+    local_directory = root / "themes" / name
+    local_flat = root / "themes" / f"{name}.css"
+    local_nested = local_directory / f"{name}.css"
+    if local_flat.is_file():
+        theme = local_flat
+    elif local_nested.is_file():
+        theme = local_nested
+    else:
+        theme = bundled.joinpath(f"{name}.css")
     if not theme.is_file():
         raise BuildError(f"Unknown theme: {name}")
     css = bundled.joinpath("base.css").read_text(encoding="utf-8")
@@ -178,6 +186,58 @@ def init_project(directory: Path) -> Path:
     return root / "document.yaml"
 
 
+def run_theme_command(args: argparse.Namespace) -> int:
+    project_root = Path.cwd()
+    action = args.themes_action
+    if action == "list":
+        themes = theme_manager.load_catalog()
+        if not themes:
+            print("No community themes are currently available.")
+        for theme in themes:
+            print(f"{theme.theme_id} ({theme.version}) - {theme.description}")
+        return 0
+    if action == "info":
+        theme = theme_manager.get_theme(args.theme_id)
+        print(f"{theme.name} ({theme.theme_id})")
+        print(f"Version: {theme.version}")
+        print(f"Description: {theme.description}")
+        print(f"License: {theme.license}")
+        print(f"Requires Chaptr: {theme.min_chaptr_version} or newer")
+        return 0
+    if action == "add":
+        theme = theme_manager.add_theme(project_root, args.theme_id)
+        print(f"Installed {theme.theme_id} {theme.version} in {project_root / 'themes'}")
+        print(f"Set 'theme: {theme.theme_id}' in document.yaml to use it.")
+        return 0
+    if action == "check":
+        updates = theme_manager.check_updates(project_root)
+        if not updates:
+            print("No Chaptr-managed themes are installed in this project.")
+        for item in updates:
+            if item.status == "update":
+                print(
+                    f"{item.theme_id}: {item.installed_version} -> {item.available_version}; "
+                    f"run 'chaptr themes update {item.theme_id}'."
+                )
+            elif item.status == "unlisted":
+                print(f"{item.theme_id} {item.installed_version}: no longer in the catalog.")
+            elif item.status == "local-newer":
+                print(f"{item.theme_id} {item.installed_version}: newer than the catalog entry.")
+            else:
+                print(f"{item.theme_id} {item.installed_version}: up to date.")
+        return 0
+    if action == "update":
+        installed_version = theme_manager.installed_theme_version(project_root, args.theme_id)
+        theme = theme_manager.update_theme(project_root, args.theme_id)
+        if installed_version == theme.version:
+            print(f"{theme.theme_id} is already up to date ({theme.version}).")
+        else:
+            print(f"Updated {theme.theme_id} from {installed_version} to {theme.version}.")
+            print("The downloaded theme files were replaced; project stylesheet overrides are unchanged.")
+        return 0
+    raise BuildError(f"Unknown theme command: {action}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="chaptr",
@@ -189,10 +249,22 @@ def main() -> int:
             "  chaptr build --format pdf\n"
             "  chaptr build --config path/to/document.yaml\n"
             "  chaptr build --help\n\n"
+            "  chaptr themes list\n"
+            "  chaptr themes add roleplaying\n\n"
             "Run 'chaptr help' for the full usage manual."
         ),
     )
     commands = parser.add_subparsers(dest="command", required=True)
+    themes = commands.add_parser("themes", help="List, install and update community themes.")
+    theme_commands = themes.add_subparsers(dest="themes_action", required=True)
+    theme_commands.add_parser("list", help="List available community themes.")
+    theme_info = theme_commands.add_parser("info", help="Show details for a community theme.")
+    theme_info.add_argument("theme_id", metavar="THEME")
+    theme_add = theme_commands.add_parser("add", help="Install a community theme in this project.")
+    theme_add.add_argument("theme_id", metavar="THEME")
+    theme_commands.add_parser("check", help="Check installed community themes for updates.")
+    theme_update = theme_commands.add_parser("update", help="Update a managed community theme.")
+    theme_update.add_argument("theme_id", metavar="THEME")
     initializer = commands.add_parser(
         "init",
         help="Create an editable project containing chaptr's documentation.",
@@ -246,6 +318,8 @@ def main() -> int:
         print(files("chaptr").joinpath("manual.txt").read_text(encoding="utf-8"), end="")
         return 0
     try:
+        if args.command == "themes":
+            return run_theme_command(args)
         if args.command == "init":
             config_path = init_project(args.directory)
             print(f"Initialized project at {config_path.parent}")
@@ -253,7 +327,7 @@ def main() -> int:
             print(f'Build with: chaptr build --config "{config_path.as_posix()}"')
             return 0
         destination = build(args.config, args.format, args.theme)
-    except (BuildError, OSError, yaml.YAMLError) as error:
+    except (BuildError, theme_manager.ThemeError, OSError, yaml.YAMLError) as error:
         print(f"chaptr: {error}", file=sys.stderr)
         return 1
     print(destination)

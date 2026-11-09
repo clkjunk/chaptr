@@ -10,6 +10,11 @@ SYNOPSIS
     chaptr init --help
     chaptr build [--config PATH] [--format {markdown,html,pdf}] [--theme NAME]
     chaptr build --help
+    chaptr themes list
+    chaptr themes info THEME
+    chaptr themes add THEME
+    chaptr themes check
+    chaptr themes update THEME
 
 DESCRIPTION
     Install the CLI once and use it with any number of document projects.
@@ -37,6 +42,15 @@ COMMANDS
 
     help
         Print this manual. No document project or PDF dependencies are needed.
+
+    themes
+        Browse the public catalog, install a theme into the current document
+        project, check installed theme versions and update a selected theme.
+        Catalog commands need an internet connection. Theme files are copied
+        into themes/ under the current directory; add sets the downloaded files
+        up but does not edit document.yaml. Set the theme field to use it.
+        Updating replaces the downloaded theme directory. Keep personal CSS in
+        the project's separate stylesheet file.
 
 OPTIONS
     -h, --help
@@ -140,11 +154,26 @@ THEMES
         2. Project themes/NAME.css if present, otherwise bundled NAME.css.
         3. The optional stylesheet specified in the configuration.
 
-    To create a theme, add themes/company.css and set theme: company.
-    A local themes/modern.css replaces only that project's modern theme.
+    To create a theme, add themes/company.css or
+    themes/company/company.css and set theme: company.
+    A local themes/modern.css or themes/modern/modern.css replaces only that
+    project's modern theme.
     Use @media print for PDF-specific rules and @page for size and margins.
     The base print layout uses A4, 20mm margins and a new page per chapter.
     Relative CSS asset URLs currently resolve from the project root.
+
+COMMUNITY THEMES
+    chaptr themes list          List catalog themes and current versions.
+    chaptr themes info THEME    Show description, license and requirements.
+    chaptr themes add THEME     Install a theme in the current project.
+    chaptr themes check         Report available updates for installed themes.
+    chaptr themes update THEME  Replace one installed theme with its latest version.
+
+    Installed versions are recorded in each theme directory. Updates replace
+    downloaded files, so keep local overrides in the project's stylesheet.
+    Themes copied into a project by hand are not managed by these commands.
+    The catalog is hosted at github.com/clkjunk/chaptr-themes. Builds work
+    offline after the theme files have been installed.
 
 OUTPUT
     The selected output directory receives one file per build:
@@ -190,6 +219,11 @@ EXAMPLES
     Export merged Markdown or select another theme:
         chaptr build --format markdown
         chaptr build --theme vintage
+
+    Browse and install community themes from a document project directory:
+        chaptr themes list
+        chaptr themes add roleplaying
+        chaptr themes check
 
 EXIT STATUS
     0   Success, including help output.

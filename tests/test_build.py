@@ -112,13 +112,13 @@ def project(root: Path, product: str) -> Path:
     return config
 
 
-@pytest.mark.parametrize("section", ["Actions", "Spells", "Reactions", "Custom Abilities"])
-def test_monster_container(tmp_path, section):
+def test_classed_container(tmp_path):
     config = project(tmp_path / "project", "Alpha")
     source = (
-        "# Encounter\n\n::: monster\n## Example Creature\n\n*Medium humanoid*\n\n"
-        "**AC:** 12  \n**HP:** 40\n\n| STR | DEX |\n| --- | --- |\n| 9 | 14 |\n\n"
-        f"### {section}\n\n**Strike.** Deal damage.\n\n![Reference](reference.png)\n\n"
+        "# Notes\n\n::: note-panel toc=exclude\n"
+        "## Panel heading\n\nA highlighted note.\n\n"
+        "| Label | Value |\n| --- | --- |\n| Item | Example |\n\n"
+        "### Detail\n\nA secondary heading.\n\n![Reference](reference.png)\n\n"
         "<script>unsafe()</script>\n:::\n\n## After the block\n"
     )
     (config.parent / "chapter.md").write_text(source, encoding="utf-8")
@@ -127,18 +127,19 @@ def test_monster_container(tmp_path, section):
     settings["toc_depth"] = 3
     config.write_text(yaml.safe_dump(settings), encoding="utf-8")
     rendered = build(config).read_text(encoding="utf-8")
-    assert '<article class="monster-card">' in rendered
-    assert '<h2 id="example-creature">Example Creature</h2>' in rendered
-    assert f'>{section}</h3>' in rendered
-    assert '<strong>Strike.</strong> Deal damage.' in rendered
+    assert '<div class="note-panel">' in rendered
+    assert '<h2 id="panel-heading">Panel heading</h2>' in rendered
+    assert '<h3 id="detail">Detail</h3>' in rendered
+    assert 'A highlighted note.' in rendered
     assert '<table>' in rendered
     assert (config.parent / "reference.png").as_uri() in rendered
     assert '<script>' not in rendered
     assert '&lt;script&gt;unsafe()&lt;/script&gt;' in rendered
-    assert 'href="#example-creature"' not in rendered
+    assert 'href="#panel-heading"' not in rendered
+    assert 'href="#detail"' not in rendered
     assert 'href="#after-the-block"' in rendered
-    assert '</article>\n<h2 id="after-the-block">' in rendered
-    assert '::: monster' not in rendered
+    assert '</div>\n<h2 id="after-the-block">' in rendered
+    assert '::: note-panel toc=exclude' not in rendered
     assert source == build(config, "markdown").read_text(encoding="utf-8")
 
 
@@ -165,6 +166,22 @@ def test_local_theme_and_extra_stylesheet(tmp_path):
     assert "#146454" not in rendered
     assert rendered.index("line-height: 1.9") > rendered.index("color: red")
     assert "#632c35" in build(config, theme="vintage").read_text(encoding="utf-8")
+
+
+def test_nested_local_theme(tmp_path):
+    config = project(tmp_path / "project", "Alpha")
+    theme_directory = config.parent / "themes" / "roleplaying"
+    theme_directory.mkdir(parents=True)
+    (theme_directory / "roleplaying.css").write_text(
+        "h1 { color: red; }", encoding="utf-8"
+    )
+    settings = yaml.safe_load(config.read_text(encoding="utf-8"))
+    settings["theme"] = "roleplaying"
+    config.write_text(yaml.safe_dump(settings), encoding="utf-8")
+
+    rendered = build(config).read_text(encoding="utf-8")
+
+    assert "h1 { color: red; }" in rendered
 
 
 def test_chapter_relative_images(tmp_path):

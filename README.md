@@ -16,9 +16,11 @@ source checkout and GitHub release wheel options.
 | `chaptr build --format pdf` | Generate PDF when renderer dependencies are available |
 | `chaptr help` | Read the bundled command manual |
 | `chaptr --help` | List commands; each command also supports `--help` |
+| `chaptr themes list` | Browse community themes |
+| `chaptr themes add THEME` | Install a theme into the current document project |
 
 See the [documentation](docs/README.md) for requirements, the user workflow,
-configuration, themes and current limitations. The documentation is itself an
+configuration, themes and current limitations. The documentation is itself a
 chaptr project, so you can try the tool on its own source:
 
 ```sh
@@ -27,7 +29,12 @@ chaptr build --config docs/document.yaml
 
 ## Changelog
 
-### 0.1.1 - Unreleased
+### Unreleased
+
+- Added commands to browse, install and update community themes.
+- Added MIT licensing to the repository and package metadata.
+
+### 0.1.1
 
 - Renamed the package and command to chaptr.
 - Added publishing to PyPI through GitHub Actions Trusted Publishing.
