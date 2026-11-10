@@ -1,5 +1,5 @@
 # Authors
 
-$app_name is maintained by its contributors.
+$app_name is maintained by Piotr Semeniuk (clkjunk)
 
 This document describes version $app_version.

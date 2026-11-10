@@ -29,8 +29,11 @@ chaptr build --config docs/document.yaml
 
 ## Changelog
 
-### Unreleased
+### 0.1.2
 
+- Added bottom-right PDF page numbers starting after covers and title pages, with matching contents references and configurable footers.
+- Added paper-size presets shared by HTML previews and PDFs, plus opt-in Polish single-letter word spacing through `language: pl`.
+- Replaced modern and vintage with a neutral base theme, reusable columns and alignment utilities. Existing projects using those bundled names should select `base` or install a custom theme.
 - Added commands to browse, install and update community themes.
 - Added MIT licensing to the repository and package metadata.
 
@@ -52,8 +55,8 @@ chaptr build --config docs/document.yaml
 
 PDF requires native libraries.
 
-Planned: [named document templates](docs/07-roadmap.md), including roleplaying
-scenarios and workplace accessibility documents. Template selection is not available yet.
+Planned: [named document templates](docs/07-roadmap.md), including accessibility-oriented
+documents. Template selection is not available yet.
 
 ## License
 

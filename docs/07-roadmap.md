@@ -1,21 +1,14 @@
 # Roadmap
 
-## Next: RPG Scenarios
+## Next
 
-- [ ] Define the first roleplaying scenario template around a real project.
-- [ ] Add named templates through `chaptr init --template NAME`, keeping docs as the default.
-- [ ] Prepare scenario-specific sections and styling for dialogue and flavour text.
-- [ ] Check two-column layouts and page breaks with real scenario content.
-- [ ] Test initialization, editing and PDF export end to end on the real project.
-
-## Later
-
-- [ ] Create a workplace accessibility document template.
-- [ ] Verify clean-machine installation.
-- [ ] Bundle self-contained releases for Windows, macOS and Linux.
+- [ ] Add a named template through `chaptr init --template NAME`, keeping docs as the default for now.
+- [ ] Add accessibility driven document template.
 - [ ] Add interactive initialization.
 - [ ] Explore a VS Code extension that reuses the chaptr CLI for project creation and builds.
 
 ## Completed
 
 - [x] Verify PDF rendering on the Windows development setup.
+- [x] Add chaptr-themes as a separate system support community themes.
+- [x] Prep the base.css as the simple, Word style rendering.

@@ -1,13 +1,15 @@
-title: chaptr Documentation
-subtitle: Markdown document workflow
-author: chaptr contributors
+title: chaptr documentation
+subtitle: From installation to what comes next
+author: Piotr Semeniuk (clkjunk)
+language: en
+page_size: A4
 title_page: true
 table_of_contents: true
 toc_depth: 2
 front_cover: 00-front-cover.md
 author_section: 00-authors.md
 back_cover: 99-back-cover.md
-theme: modern
+theme: base
 stylesheet: styles.css
 output: build
 files:
@@ -20,4 +22,4 @@ files:
   - 07-roadmap.md
 variables:
   app_name: chaptr
-  app_version: "0.1.1"
+  app_version: "0.1.2"

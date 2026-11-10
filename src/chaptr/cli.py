@@ -12,6 +12,15 @@ from chaptr.render import render_document
 from chaptr import theme_manager
 
 
+PAGE_SIZES = {
+    "A3": (297, 420),
+    "A4": (210, 297),
+    "A5": (148, 210),
+    "Letter": (215.9, 279.4),
+    "Legal": (215.9, 355.6),
+}
+
+
 class BuildError(ValueError):
     pass
 
@@ -70,6 +79,11 @@ def load_config(path: Path) -> dict:
     for name in ("title_page", "table_of_contents"):
         if name in config and not isinstance(config[name], bool):
             raise BuildError(f"{name} must be true or false.")
+    if not isinstance(config.get("page_size", "A4"), str) or config.get("page_size", "A4") not in PAGE_SIZES:
+        raise BuildError("page_size must be one of: " + ", ".join(PAGE_SIZES) + ".")
+    language = config.get("language", "en")
+    if not isinstance(language, str) or not re.fullmatch(r"[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*", language):
+        raise BuildError("language must be a language tag, such as en, pl or pl-PL.")
     if "toc_depth" in config and (type(config["toc_depth"]) is not int or not 1 <= config["toc_depth"] <= 6):
         raise BuildError("toc_depth must be an integer from 1 to 6.")
     return config
@@ -77,7 +91,7 @@ def load_config(path: Path) -> dict:
 
 def theme_css(root: Path, name: str, stylesheet: str | None) -> str:
     if not re.fullmatch(r"[A-Za-z0-9_-]+", name):
-        raise BuildError("theme must be a simple name, such as modern or vintage.")
+        raise BuildError("theme must be a simple name, such as base or company.")
     bundled = files("chaptr").joinpath("themes")
     local_directory = root / "themes" / name
     local_flat = root / "themes" / f"{name}.css"
@@ -91,7 +105,8 @@ def theme_css(root: Path, name: str, stylesheet: str | None) -> str:
     if not theme.is_file():
         raise BuildError(f"Unknown theme: {name}")
     css = bundled.joinpath("base.css").read_text(encoding="utf-8")
-    css += "\n" + theme.read_text(encoding="utf-8")
+    if theme != bundled.joinpath("base.css"):
+        css += "\n" + theme.read_text(encoding="utf-8")
     if stylesheet:
         css += "\n" + (root / stylesheet).read_text(encoding="utf-8")
     return css
@@ -127,12 +142,18 @@ def build(config_path: Path, format_name: str = "html", theme: str | None = None
     if format_name == "markdown":
         content = "\n\n".join(source.rstrip() for source, path, role in chapters) + "\n"
     else:
-        css = theme_css(root, theme or config.get("theme", "modern"), config.get("stylesheet"))
-        if format_name == "pdf" and "front_cover" in pdf_covers:
-            css += "\n@page:first { counter-reset: page 2; }\n"
+        width, height = PAGE_SIZES[config.get("page_size", "A4")]
+        css = (
+            ":root {\n"
+            f"    --page-width: {width}mm;\n"
+            f"    --page-height: {height}mm;\n"
+            f"    --page-content-height: {height - 40:g}mm;\n"
+            "}\n\n"
+        )
+        css += theme_css(root, theme or config.get("theme", "base"), config.get("stylesheet"))
         title = html.escape(config.get("title", "Document"))
         content = (
-            '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">'
+            f'<!doctype html>\n<html lang="{config.get("language", "en")}"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width, initial-scale=1">'
             f"<title>{title}</title><style>{css}</style></head>"
             f'<body><main>{render_document(chapters, config)}</main></body></html>\n'
@@ -293,7 +314,7 @@ def main() -> int:
             "  chaptr build\n"
             "  chaptr build --format pdf\n"
             "  chaptr build --config path/to/document.yaml --format markdown\n"
-            "  chaptr build --theme vintage\n\n"
+            "  chaptr build --theme base\n\n"
             "Project paths are relative to the configuration file. Output defaults\n"
             "to build/document.<extension> within that project; existing output\n"
             "of the same format is replaced. PDF requires WeasyPrint and its\n"

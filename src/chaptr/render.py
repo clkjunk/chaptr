@@ -12,6 +12,45 @@ from mdit_py_plugins.footnote import footnote_plugin
 
 
 CLASS_NAME_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_-]*\Z")
+POLISH_WORD_SPACE_PATTERN = re.compile(r'''(?<!\S)(["'(\[{\u00ab\u2018\u201c\u201e]*[aAiIoOuUwWzZ])(?P<space>[ \t\n]+)(?=\S)''')
+
+
+def bind_polish_words(text: str) -> str:
+    return POLISH_WORD_SPACE_PATTERN.sub(lambda match: match[1] + "\xa0", text)
+
+
+def bind_polish_inline_words(children: list[Token]) -> None:
+    parts = []
+    fragments = []
+    offset = 0
+    in_autolink = False
+    for child in children:
+        if child.type == "link_open":
+            in_autolink = child.info == "auto"
+        elif child.type == "link_close":
+            in_autolink = False
+        if child.type == "text" and not in_autolink:
+            content = child.content
+            fragments.append((child, content, offset))
+        elif child.type == "softbreak":
+            content = "\n"
+            fragments.append((child, content, offset))
+        elif child.nesting:
+            content = ""
+        else:
+            content = "\0"
+        parts.append(content)
+        offset += len(content)
+    replacements = {}
+    for match in POLISH_WORD_SPACE_PATTERN.finditer("".join(parts)):
+        start, end = match.span("space")
+        replacements[start] = "\xa0"
+        replacements.update((position, "") for position in range(start + 1, end))
+    for child, content, start in fragments:
+        updated = "".join(replacements.get(start + index, character) for index, character in enumerate(content))
+        if updated != content:
+            child.type = "text"
+            child.content = updated
 
 
 def validate_class_container(params: str, markup: str) -> bool:
@@ -159,15 +198,21 @@ def render_document(chapters: list[tuple[str, Path, str]], config: dict) -> str:
                         resolved += "#" + url.fragment
                     child.attrSet(attribute, resolved)
         (notes if in_notes else groups[owner]).append(token)
+    polish = config.get("language", "en").lower().split("-")[0] == "pl"
+    if polish:
+        for token in tokens:
+            if token.type == "inline":
+                bind_polish_inline_words(token.children or [])
     rendered = [parser.renderer.render(group, parser.options, environment) for group in groups]
     result = []
     for position, chapter in enumerate(chapters):
         if chapter[2] == "front-cover":
             result.append(f'<section class="front-cover document-page">{rendered[position]}</section>')
     if config.get("title_page"):
-        title = html.escape(config.get("title", "Document"))
-        subtitle = html.escape(config.get("subtitle", ""))
-        author = html.escape(config.get("author", ""))
+        title, subtitle, author = (
+            html.escape(bind_polish_words(value) if polish else value)
+            for value in (config.get("title", "Document"), config.get("subtitle", ""), config.get("author", ""))
+        )
         result.append(
             f'<section class="title-page document-page"><h1>{title}</h1>'
             f'<p class="subtitle">{subtitle}</p><p class="author">{author}</p></section>'
@@ -177,7 +222,7 @@ def render_document(chapters: list[tuple[str, Path, str]], config: dict) -> str:
             result.append(f'<section class="author-section document-page">{rendered[position]}</section>')
     if config.get("table_of_contents"):
         entries = "".join(
-            f'<li class="toc-level-{level}"><a href="#{identifier}">{html.escape(text)}</a></li>'
+            f'<li class="toc-level-{level}"><a href="#{identifier}">{html.escape(bind_polish_words(text) if polish else text)}</a></li>'
             for level, text, identifier in headings if level <= config.get("toc_depth", 2)
         )
         result.append(f'<nav class="contents document-page" aria-label="Table of contents"><h1>Contents</h1><ol>{entries}</ol></nav>')

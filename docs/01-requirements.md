@@ -19,11 +19,11 @@ To install from PyPI, or upgrade an existing installation, run:
 python -m pip install --upgrade chaptr
 ```
 
-To install a wheel from a GitHub release, download `chaptr-0.1.1-py3-none-any.whl`
+To install a wheel from a GitHub release, download `chaptr-0.1.2-py3-none-any.whl`
 and run this command from the directory containing the downloaded file:
 
 ```sh
-python -m pip install ./chaptr-0.1.1-py3-none-any.whl
+python -m pip install ./chaptr-0.1.2-py3-none-any.whl
 ```
 
 To install from a source checkout, run this from the repository root:
