@@ -11,8 +11,76 @@ from mdit_py_plugins.container import container_plugin
 from mdit_py_plugins.footnote import footnote_plugin
 
 
-def render_monster(renderer: RendererHTML, tokens: list[Token], index: int, options: dict, environment: dict) -> str:
-    return '<article class="monster-card">\n' if tokens[index].nesting == 1 else '</article>\n'
+CLASS_NAME_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_-]*\Z")
+POLISH_WORD_SPACE_PATTERN = re.compile(r'''(?<!\S)(["'(\[{\u00ab\u2018\u201c\u201e]*[aAiIoOuUwWzZ])(?P<space>[ \t\n]+)(?=\S)''')
+
+
+def bind_polish_words(text: str) -> str:
+    return POLISH_WORD_SPACE_PATTERN.sub(lambda match: match[1] + "\xa0", text)
+
+
+def bind_polish_inline_words(children: list[Token]) -> None:
+    parts = []
+    fragments = []
+    offset = 0
+    in_autolink = False
+    for child in children:
+        if child.type == "link_open":
+            in_autolink = child.info == "auto"
+        elif child.type == "link_close":
+            in_autolink = False
+        if child.type == "text" and not in_autolink:
+            content = child.content
+            fragments.append((child, content, offset))
+        elif child.type == "softbreak":
+            content = "\n"
+            fragments.append((child, content, offset))
+        elif child.nesting:
+            content = ""
+        else:
+            content = "\0"
+        parts.append(content)
+        offset += len(content)
+    replacements = {}
+    for match in POLISH_WORD_SPACE_PATTERN.finditer("".join(parts)):
+        start, end = match.span("space")
+        replacements[start] = "\xa0"
+        replacements.update((position, "") for position in range(start + 1, end))
+    for child, content, start in fragments:
+        updated = "".join(replacements.get(start + index, character) for index, character in enumerate(content))
+        if updated != content:
+            child.type = "text"
+            child.content = updated
+
+
+def validate_class_container(params: str, markup: str) -> bool:
+    parts = params.strip().split()
+    classes = [part for part in parts if part != "toc=exclude"]
+    controls = [part for part in parts if part == "toc=exclude"]
+    return bool(classes) and len(controls) <= 1 and all(
+        CLASS_NAME_PATTERN.fullmatch(class_name) for class_name in classes
+    )
+
+
+def render_class_container(
+    renderer: RendererHTML,
+    tokens: list[Token],
+    index: int,
+    options: dict,
+    environment: dict,
+) -> str:
+    token = tokens[index]
+    if token.nesting == 1:
+        classes = [
+            part for part in token.info.strip().split()
+            if part != "toc=exclude"
+        ]
+        return f'<div class="{html.escape(" ".join(classes), quote=True)}">\n'
+    return "</div>\n"
+
+
+def excludes_toc(token: Token) -> bool:
+    return token.type == "container_class_open" and "toc=exclude" in token.info.split()
 
 
 def table_captions(tokens: list[Token], offsets: list[int]) -> None:
@@ -64,7 +132,12 @@ def table_captions(tokens: list[Token], offsets: list[int]) -> None:
 
 def render_document(chapters: list[tuple[str, Path, str]], config: dict) -> str:
     parser = MarkdownIt("commonmark", {"html": False}).enable("table").use(footnote_plugin)
-    parser.use(container_plugin, "monster", render=render_monster)
+    parser.use(
+        container_plugin,
+        "class",
+        validate=validate_class_container,
+        render=render_class_container,
+    )
     offsets = []
     sources = []
     line_number = 0
@@ -86,10 +159,12 @@ def render_document(chapters: list[tuple[str, Path, str]], config: dict) -> str:
             identifiers.update((f"fn{note_number}", f"fnref{note_number}"))
     owner = 0
     in_notes = False
-    monster_depth = 0
+    toc_exclusion_stack = []
     for index, token in enumerate(tokens):
-        if token.type in {"container_monster_open", "container_monster_close"}:
-            monster_depth += token.nesting
+        if token.type == "container_class_open":
+            toc_exclusion_stack.append(excludes_toc(token))
+        elif token.type == "container_class_close" and toc_exclusion_stack:
+            toc_exclusion_stack.pop()
         if token.type == "footnote_block_open":
             in_notes = True
         if not in_notes and token.map:
@@ -105,7 +180,7 @@ def render_document(chapters: list[tuple[str, Path, str]], config: dict) -> str:
                 suffix += 1
             identifiers.add(identifier)
             token.attrSet("id", identifier)
-            if chapters[owner][2] == "chapter" and not monster_depth:
+            if chapters[owner][2] == "chapter" and not any(toc_exclusion_stack):
                 headings.append((int(token.tag[1]), text, identifier))
         asset_owner = owner
         if in_notes and token.map:
@@ -123,15 +198,21 @@ def render_document(chapters: list[tuple[str, Path, str]], config: dict) -> str:
                         resolved += "#" + url.fragment
                     child.attrSet(attribute, resolved)
         (notes if in_notes else groups[owner]).append(token)
+    polish = config.get("language", "en").lower().split("-")[0] == "pl"
+    if polish:
+        for token in tokens:
+            if token.type == "inline":
+                bind_polish_inline_words(token.children or [])
     rendered = [parser.renderer.render(group, parser.options, environment) for group in groups]
     result = []
     for position, chapter in enumerate(chapters):
         if chapter[2] == "front-cover":
             result.append(f'<section class="front-cover document-page">{rendered[position]}</section>')
     if config.get("title_page"):
-        title = html.escape(config.get("title", "Document"))
-        subtitle = html.escape(config.get("subtitle", ""))
-        author = html.escape(config.get("author", ""))
+        title, subtitle, author = (
+            html.escape(bind_polish_words(value) if polish else value)
+            for value in (config.get("title", "Document"), config.get("subtitle", ""), config.get("author", ""))
+        )
         result.append(
             f'<section class="title-page document-page"><h1>{title}</h1>'
             f'<p class="subtitle">{subtitle}</p><p class="author">{author}</p></section>'
@@ -141,7 +222,7 @@ def render_document(chapters: list[tuple[str, Path, str]], config: dict) -> str:
             result.append(f'<section class="author-section document-page">{rendered[position]}</section>')
     if config.get("table_of_contents"):
         entries = "".join(
-            f'<li class="toc-level-{level}"><a href="#{identifier}">{html.escape(text)}</a></li>'
+            f'<li class="toc-level-{level}"><a href="#{identifier}">{html.escape(bind_polish_words(text) if polish else text)}</a></li>'
             for level, text, identifier in headings if level <= config.get("toc_depth", 2)
         )
         result.append(f'<nav class="contents document-page" aria-label="Table of contents"><h1>Contents</h1><ol>{entries}</ol></nav>')

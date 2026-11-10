@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from chaptr.cli import BuildError, build, init_project, main, substitute
+from chaptr.cli import BuildError, build, init_project, main, substitute, theme_css
 
 
 @pytest.mark.parametrize("arguments, expected", [
@@ -55,7 +55,7 @@ def test_init_cli_creates_buildable_project(directory, tmp_path, monkeypatch, ca
         if source.is_file() and source.suffix in {".md", ".yaml", ".css"}:
             assert (root / source.name).read_bytes() == source.read_bytes()
     rendered = build(config).read_text(encoding="utf-8")
-    assert "<title>chaptr Documentation</title>" in rendered
+    assert "<title>chaptr documentation</title>" in rendered
     assert '<h1 id="user-workflow">User Workflow</h1>' in rendered
     assert '<h1 id="configuration-and-variables">Configuration and Variables</h1>' in rendered
     assert '<h1 id="roadmap">Roadmap</h1>' in rendered
@@ -107,18 +107,18 @@ def project(root: Path, product: str) -> Path:
     (root / "chapter.md").write_text("# $product\n\n`$product` costs $$20.\n", encoding="utf-8")
     config = root / "document.yaml"
     config.write_text(yaml.safe_dump({
-        "files": ["chapter.md"], "variables": {"product": product}, "theme": "modern"
+        "files": ["chapter.md"], "variables": {"product": product}
     }), encoding="utf-8")
     return config
 
 
-@pytest.mark.parametrize("section", ["Actions", "Spells", "Reactions", "Custom Abilities"])
-def test_monster_container(tmp_path, section):
+def test_classed_container(tmp_path):
     config = project(tmp_path / "project", "Alpha")
     source = (
-        "# Encounter\n\n::: monster\n## Example Creature\n\n*Medium humanoid*\n\n"
-        "**AC:** 12  \n**HP:** 40\n\n| STR | DEX |\n| --- | --- |\n| 9 | 14 |\n\n"
-        f"### {section}\n\n**Strike.** Deal damage.\n\n![Reference](reference.png)\n\n"
+        "# Notes\n\n::: note-panel toc=exclude\n"
+        "## Panel heading\n\nA highlighted note.\n\n"
+        "| Label | Value |\n| --- | --- |\n| Item | Example |\n\n"
+        "### Detail\n\nA secondary heading.\n\n![Reference](reference.png)\n\n"
         "<script>unsafe()</script>\n:::\n\n## After the block\n"
     )
     (config.parent / "chapter.md").write_text(source, encoding="utf-8")
@@ -127,18 +127,19 @@ def test_monster_container(tmp_path, section):
     settings["toc_depth"] = 3
     config.write_text(yaml.safe_dump(settings), encoding="utf-8")
     rendered = build(config).read_text(encoding="utf-8")
-    assert '<article class="monster-card">' in rendered
-    assert '<h2 id="example-creature">Example Creature</h2>' in rendered
-    assert f'>{section}</h3>' in rendered
-    assert '<strong>Strike.</strong> Deal damage.' in rendered
+    assert '<div class="note-panel">' in rendered
+    assert '<h2 id="panel-heading">Panel heading</h2>' in rendered
+    assert '<h3 id="detail">Detail</h3>' in rendered
+    assert 'A highlighted note.' in rendered
     assert '<table>' in rendered
     assert (config.parent / "reference.png").as_uri() in rendered
     assert '<script>' not in rendered
     assert '&lt;script&gt;unsafe()&lt;/script&gt;' in rendered
-    assert 'href="#example-creature"' not in rendered
+    assert 'href="#panel-heading"' not in rendered
+    assert 'href="#detail"' not in rendered
     assert 'href="#after-the-block"' in rendered
-    assert '</article>\n<h2 id="after-the-block">' in rendered
-    assert '::: monster' not in rendered
+    assert '</div>\n<h2 id="after-the-block">' in rendered
+    assert '::: note-panel toc=exclude' not in rendered
     assert source == build(config, "markdown").read_text(encoding="utf-8")
 
 
@@ -155,16 +156,87 @@ def test_local_theme_and_extra_stylesheet(tmp_path):
     config = project(tmp_path / "project", "Alpha")
     themes = config.parent / "themes"
     themes.mkdir()
-    (themes / "modern.css").write_text("h1 { color: red; }", encoding="utf-8")
+    (themes / "company.css").write_text("h1 { color: red; }", encoding="utf-8")
     (config.parent / "styles.css").write_text("body { line-height: 1.9; }", encoding="utf-8")
     settings = yaml.safe_load(config.read_text(encoding="utf-8"))
+    settings["theme"] = "company"
     settings["stylesheet"] = "styles.css"
     config.write_text(yaml.safe_dump(settings), encoding="utf-8")
     rendered = build(config).read_text(encoding="utf-8")
     assert "color: red" in rendered
-    assert "#146454" not in rendered
+    assert rendered.index(".columns {") < rendered.index("color: red")
     assert rendered.index("line-height: 1.9") > rendered.index("color: red")
-    assert "#632c35" in build(config, theme="vintage").read_text(encoding="utf-8")
+    base = build(config, theme="base").read_text(encoding="utf-8")
+    assert "color: red" not in base
+    assert "line-height: 1.9" in base
+
+
+def test_base_is_the_only_bundled_theme_and_default(tmp_path):
+    from importlib.resources import files
+
+    bundled = files("chaptr").joinpath("themes")
+    assert {path.name for path in bundled.iterdir() if path.name.endswith(".css")} == {"base.css"}
+    config = project(tmp_path / "project", "Alpha")
+    assert build(config).read_bytes() == build(config, theme="base").read_bytes()
+    assert theme_css(config.parent, "base", None) == bundled.joinpath("base.css").read_text(encoding="utf-8")
+    for removed in ("modern", "vintage"):
+        with pytest.raises(BuildError, match="Unknown theme"):
+            build(config, theme=removed)
+
+
+def test_local_base_keeps_shared_foundation(tmp_path):
+    themes = tmp_path / "themes"
+    themes.mkdir()
+    (themes / "base.css").write_text("body { font-size: 14pt; }", encoding="utf-8")
+    css = theme_css(tmp_path, "base", None)
+    assert css.count("@page {") == 1
+    assert css.index("font-size: 12pt") < css.index("font-size: 14pt")
+
+
+@pytest.mark.parametrize("layout,count", [
+    ("columns", 2), ("columns columns-3", 3),
+    ("columns columns-2-1", 2), ("columns columns-1-2", 2),
+])
+def test_layout_containers(layout, count, tmp_path):
+    config = project(tmp_path / "project", "Alpha")
+    (config.parent / "image.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="48">'
+        '<rect width="80" height="48" fill="#ddd"/>'
+        '<path d="M10 38L30 12L45 28L56 18L72 38Z" fill="#555"/></svg>',
+        encoding="utf-8",
+    )
+    columns = "\n\n".join(
+        f"::: column\n## Column {number + 1}\n\n**Content**\n\n"
+        "A paragraph of ordinary Markdown that wraps to the available column width.\n\n"
+        "| Item | Cost |\n| --- | ---: |\n| Rope | 5 |\n\n"
+        "![Image](image.svg)\n:::" for number in range(count)
+    )
+    source = f":::: {layout}\n{columns}\n::::\n\n::: align-center\n![Image](image.svg)\n:::\n"
+    (config.parent / "chapter.md").write_text(source, encoding="utf-8")
+    rendered = build(config).read_text(encoding="utf-8")
+    assert f'<div class="{layout}">' in rendered
+    assert rendered.count('<div class="column">') == count
+    assert rendered.count("<strong>Content</strong>") == count
+    assert '<div class="align-center">' in rendered
+    assert rendered.count("<table>") == count
+    assert (config.parent / "image.svg").as_uri() in rendered
+    assert build(config, "markdown").read_text(encoding="utf-8") == source
+
+
+def test_nested_local_theme(tmp_path):
+    config = project(tmp_path / "project", "Alpha")
+    theme_directory = config.parent / "themes" / "roleplaying"
+    theme_directory.mkdir(parents=True)
+    (theme_directory / "roleplaying.css").write_text(
+        "h1 { color: red; }", encoding="utf-8"
+    )
+    settings = yaml.safe_load(config.read_text(encoding="utf-8"))
+    settings["theme"] = "roleplaying"
+    config.write_text(yaml.safe_dump(settings), encoding="utf-8")
+
+    rendered = build(config).read_text(encoding="utf-8")
+
+    assert "h1 { color: red; }" in rendered
 
 
 def test_chapter_relative_images(tmp_path):
@@ -252,7 +324,10 @@ def test_optional_document_pages(tmp_path):
 
 
 @pytest.mark.parametrize("field,value", [("title_page", "yes"), ("table_of_contents", 1),
-                                         ("toc_depth", 0), ("toc_depth", True), ("front_cover", 42)])
+                                         ("toc_depth", 0), ("toc_depth", True), ("front_cover", 42),
+                                         ("page_size", "A0"), ("page_size", 4), ("page_size", []),
+                                         ("page_size", None), ("language", ""), ("language", 42),
+                                         ("language", ["pl"]), ("language", 'pl" onload="bad')])
 def test_invalid_document_options(field, value, tmp_path):
     config = project(tmp_path / "project", "Alpha")
     settings = yaml.safe_load(config.read_text(encoding="utf-8"))
@@ -260,6 +335,64 @@ def test_invalid_document_options(field, value, tmp_path):
     config.write_text(yaml.safe_dump(settings), encoding="utf-8")
     with pytest.raises(BuildError, match=field):
         build(config)
+
+
+@pytest.mark.parametrize("size,width,height", [
+    ("A3", 297, 420), ("A4", 210, 297), ("A5", 148, 210),
+    ("Letter", 215.9, 279.4), ("Legal", 215.9, 355.6),
+])
+def test_page_dimensions_in_html(size, width, height, tmp_path):
+    config = project(tmp_path / "project", "Alpha")
+    settings = yaml.safe_load(config.read_text(encoding="utf-8"))
+    settings["page_size"] = size
+    config.write_text(yaml.safe_dump(settings), encoding="utf-8")
+    rendered = build(config).read_text(encoding="utf-8")
+    assert f"--page-width: {width}mm" in rendered
+    assert f"--page-height: {height}mm" in rendered
+
+
+@pytest.mark.parametrize("language", [None, "en", "en-GB", "pl", "pl-PL"])
+def test_language_specific_word_spacing(language, tmp_path):
+    config = project(tmp_path / "project", "Alpha")
+    source = (
+        '# O domu\n\nA i o u w z domu. (W domu), "Z lasu".\n\n'
+        'w **domu**, **z** lasu, o [mapie](https://example.test/z).\n\n'
+        'w\nogrodzie\n\nw  \nogrodzie\n\n'
+        '`w kodzie`\n\n```text\nz kodu\n```\n\n'
+        '<https://example.test/z>\n\n![w obrazie](image.png)\n\n'
+        'Table: O domu\n\n| Opis |\n| --- |\n| w domu |\n\n'
+        'Przypis.[^note]\n\n[^note]: Z lasu.\n'
+    )
+    (config.parent / "chapter.md").write_text(source, encoding="utf-8")
+    settings = yaml.safe_load(config.read_text(encoding="utf-8"))
+    settings.update({"title": "O domu", "subtitle": "W ogrodzie", "author": "Jan z lasu",
+                     "title_page": True, "table_of_contents": True})
+    if language is not None:
+        settings["language"] = language
+    config.write_text(yaml.safe_dump(settings), encoding="utf-8")
+    rendered = build(config).read_text(encoding="utf-8")
+    assert f'<html lang="{language or "en"}">' in rendered
+    assert '<code>w kodzie</code>' in rendered
+    assert '<code class="language-text">z kodu\n</code>' in rendered
+    assert 'href="https://example.test/z"' in rendered
+    assert '>https://example.test/z</a>' in rendered
+    assert 'alt="w obrazie"' in rendered
+    assert 'w<br />\nogrodzie' in rendered
+    assert 'id="o-domu"' in rendered
+    if language in {"pl", "pl-PL"}:
+        assert 'A\xa0i\xa0o\xa0u\xa0w\xa0z\xa0domu.' in rendered
+        assert '(W\xa0domu), &quot;Z\xa0lasu&quot;.' in rendered
+        assert 'w\xa0<strong>domu</strong>, <strong>z</strong>\xa0lasu, o\xa0<a' in rendered
+        assert '<p>w\xa0ogrodzie</p>' in rendered
+        assert '<td>w\xa0domu</td>' in rendered
+        assert 'Table 1. O\xa0domu' in rendered
+        assert '>O\xa0domu</a>' in rendered
+        assert '>W\xa0ogrodzie</p>' in rendered
+        assert '>Jan z\xa0lasu</p>' in rendered
+        assert 'Z\xa0lasu.' in rendered
+    else:
+        assert '\xa0' not in rendered
+    assert build(config, "markdown").read_text(encoding="utf-8") == source
 
 
 def test_heading_ids_do_not_collide_with_tables_or_notes(tmp_path):

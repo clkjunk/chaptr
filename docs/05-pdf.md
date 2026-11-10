@@ -14,7 +14,7 @@ repository, install it with `python -m pip install -e ".[pdf]"`.
 For a wheel installation, request its extra:
 
 ```sh
-python -m pip install "path/to/chaptr-0.1.1-py3-none-any.whl[pdf]"
+python -m pip install "path/to/chaptr-0.1.2-py3-none-any.whl[pdf]"
 ```
 
 WeasyPrint also needs native system libraries, including Pango. These are compiled
@@ -48,9 +48,12 @@ document orientation. Invalid covers fail the build before existing output is
 replaced. Source cover files cannot also be the output document.
 
 The final PDF keeps the generated document's title metadata, bookmarks and linked
-destinations. An inserted front cover counts as page 1, so contents page numbers
-match the final PDF's physical pages. Avoid overriding the PDF page counter in
-custom themes when using this numbering scheme.
+destinations. Covers and generated title pages are excluded from printed numbering.
+The author section starts at page 1; when it is absent, numbering starts with
+contents or the first chapter. Numbers appear at the bottom right and contents
+entries use these printed numbers, which may differ from the viewer's physical
+page positions. Inserted PDF covers do not shift printed numbering and retain
+any text or numbering already present in their artwork.
 
 HTML and Markdown builds omit PDF covers. They can still be used to preview and
 edit the content. The docs project keeps Markdown covers as its editable default.
@@ -65,6 +68,5 @@ installation has not yet been verified.
 Missing renderer dependencies produce a build error. HTML and Markdown output,
 initialization and help remain available without them.
 
-Self-contained releases are planned to bundle Python, WeasyPrint and native
-libraries so users do not need separate setup. Those bundles are not implemented
-or verified yet. The current wheel requires Python.
+Install and update chaptr through pip. PDF support requires the `pdf` extra and
+separately installed native libraries; standalone application bundles are not planned.

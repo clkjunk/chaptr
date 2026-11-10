@@ -1,2 +1,5 @@
-body { line-height: 1.7; }
-th { background: #edf4f0; }
+body {
+	font-family: Helvetica, Arial, "Liberation Sans", sans-serif;
+	font-size: 12pt;
+	line-height: 1.5;
+}

@@ -4,7 +4,9 @@ Each document project has a YAML configuration. Only `files` is required.[^paths
 
 ```yaml
 title: Product Guide
-theme: modern
+language: en
+page_size: A4
+theme: base
 stylesheet: styles.css
 output: build
 files:
@@ -23,7 +25,9 @@ Table: Configuration fields
 | --- | --- | --- |
 | `files` | Nonempty list of Markdown paths, in chapter order | Required |
 | `title` | HTML document title | Document |
-| `theme` | Named CSS theme for HTML and PDF | modern |
+| `language` | Document language tag; `pl` enables Polish word spacing | en |
+| `page_size` | Paper preset: A3, A4, A5, Letter or Legal | A4 |
+| `theme` | Named CSS theme for HTML and PDF | base |
 | `stylesheet` | Extra project CSS applied after the theme | None |
 | `output` | Directory for generated files | build |
 | `variables` | Shared text, numeric or boolean values | Empty mapping |
@@ -38,6 +42,51 @@ Table: Configuration fields
 
 Configured paths are relative to the configuration file. To use a different
 configuration filename, pass its path with `--config`.
+
+## Paper Size
+
+Set `page_size` to use the same paper dimensions for PDF and the continuous HTML
+preview. Sizes are portrait and names are case-sensitive:
+
+| Preset | Width | Height |
+| --- | ---: | ---: |
+| A3 | 297mm | 420mm |
+| A4 | 210mm | 297mm |
+| A5 | 148mm | 210mm |
+| Letter | 215.9mm | 279.4mm |
+| Legal | 215.9mm | 355.6mm |
+
+The base style uses 20mm print margins. On a wide screen, the HTML document has
+the selected paper width, including 20mm padding on each side. It remains a
+continuous document without simulated page boundaries. On smaller screens it
+fits the viewport and uses reduced padding on phones. Browser zoom and installed
+fonts can affect its appearance; the PDF determines the final pagination.
+
+## Language and Word Spacing
+
+For a Polish document, configure:
+
+```yaml
+language: pl
+page_size: A4
+```
+
+`pl` and regional tags such as `pl-PL` keep the single-letter words `a`, `i`, `o`,
+`u`, `w` and `z` with the following word by inserting nonbreaking spaces in
+rendered HTML and PDF. Uppercase forms and words preceded by opening quotes or
+brackets are supported, including across emphasis and link formatting. For
+example, `W domu i w ogrodzie` keeps `W` with `domu` and `i w` with `ogrodzie`.
+
+The rule applies to prose, headings, tables, notes, contents entries and generated
+title-page text. Code, image descriptions, link destinations and displayed URL
+autolinks are left unchanged. Ordinary Markdown line breaks are treated as spaces;
+explicit hard line breaks are preserved. Source files and merged Markdown are
+never changed by the rule. Other languages currently receive no automatic
+single-letter spacing adjustments.
+
+The language tag also sets the HTML document's `lang` attribute. This typography
+rule is separate from CSS widow and orphan control, which manages how paragraph
+lines are divided across printed pages.
 
 ## Variables
 
@@ -124,7 +173,10 @@ See [PDF Rendering](05-pdf.md) for validation and page-numbering details.
 
 Contents include chapter headings up to `toc_depth`. Duplicate heading names get
 unique IDs such as `requirements` and `requirements-2`. HTML contents use links;
-PDF contents also show page numbers.
+PDF contents also show printed page numbers. Base styling removes link underlines
+from contents. Printed numbering begins at 1 on the author section, or contents
+or the first chapter when authors are absent; front covers and title pages do
+not count towards it. See [Themes](04-themes.md) for footer customization.
 
 HTML and PDF generate title pages, contents and numbered captions. Merged Markdown
 includes Markdown cover and author sections and preserves caption and footnote

@@ -10,6 +10,11 @@ SYNOPSIS
     chaptr init --help
     chaptr build [--config PATH] [--format {markdown,html,pdf}] [--theme NAME]
     chaptr build --help
+    chaptr themes list
+    chaptr themes info THEME
+    chaptr themes add THEME
+    chaptr themes check
+    chaptr themes update THEME
 
 DESCRIPTION
     Install the CLI once and use it with any number of document projects.
@@ -38,6 +43,15 @@ COMMANDS
     help
         Print this manual. No document project or PDF dependencies are needed.
 
+    themes
+        Browse the public catalog, install a theme into the current document
+        project, check installed theme versions and update a selected theme.
+        Catalog commands need an internet connection. Theme files are copied
+        into themes/ under the current directory; add sets the downloaded files
+        up but does not edit document.yaml. Set the theme field to use it.
+        Updating replaces the downloaded theme directory. Keep personal CSS in
+        the project's separate stylesheet file.
+
 OPTIONS
     -h, --help
         Show a short command overview. Use chaptr init --help or chaptr build --help
@@ -59,7 +73,7 @@ OPTIONS
 
     --theme NAME
         Override the configured theme for this build. Applies to HTML and PDF
-        only; ignored for Markdown. Bundled names: modern and vintage.
+        only; ignored for Markdown. The only bundled theme is base.
 
 CONFIGURATION
     Minimal document.yaml:
@@ -70,7 +84,9 @@ CONFIGURATION
     Extended document.yaml:
 
         title: Product Guide
-        theme: modern
+        language: en
+        page_size: A4
+        theme: base
         stylesheet: styles.css
         output: build
         files:
@@ -82,7 +98,9 @@ CONFIGURATION
 
     files       Required, nonempty list of source paths in chapter order.
     title       HTML document title; default: Document.
-    theme       Named CSS theme; default: modern.
+    language    Document language tag; default: en. Polish tags enable word spacing.
+    page_size   Portrait paper: A3, A4, A5, Letter or Legal; default: A4.
+    theme       Named CSS theme; default: base.
     stylesheet  Optional extra CSS path, applied after the theme.
     output      Output directory; default: build.
     variables   Optional mapping of names to text, numbers or booleans.
@@ -108,9 +126,30 @@ DOCUMENT FEATURES
     Do not list them again in files. Contents include only chapter headings.
     HTML contents are linked; PDF contents include page numbers.
 
+    Printed page numbers appear at the bottom right, starting at 1 on the author
+    section. Without authors, numbering starts on contents or the first chapter.
+    Front covers and title pages do not count; back covers have no generated
+    number. Contents links have no underline and use printed page numbers.
+    Set --page-number-content in the project stylesheet to customize the footer;
+    use none to hide it. PDF page positions may differ from printed numbers.
+
     Title pages, contents and numbered captions are generated for HTML/PDF only.
     Merged Markdown includes authored covers and author sections and preserves
     caption and footnote source syntax.
+
+PAPER SIZE AND LANGUAGE
+    page_size sets PDF paper dimensions and the continuous HTML preview's width.
+    The base uses 20mm margins; HTML includes matching padding on wide screens
+    and fits smaller viewports. It does not simulate PDF page boundaries.
+
+    Set language: pl or language: pl-PL to keep Polish single-letter words
+    a, i, o, u, w and z with the following word using nonbreaking spaces.
+    Uppercase forms, opening quotes and brackets and inline formatting work.
+    The rule applies only to rendered text, including tables, notes and generated
+    title pages and contents. Code, image descriptions and URL targets are unchanged.
+    Explicit hard line breaks are preserved. Markdown output is unchanged.
+    Other languages currently have no automatic single-letter spacing rule.
+    language also sets the HTML lang attribute.
 
 PDF COVERS
     Configure front_cover: covers/front.pdf or back_cover: covers/back.pdf.
@@ -122,8 +161,8 @@ PDF COVERS
     adjacent generated page's size within one PDF point. Invalid covers fail
     before existing output is replaced. Cover files cannot be the output file.
 
-    An inserted front cover counts as page 1; generated contents page numbers
-    match the final PDF's physical pages. Links and bookmarks are preserved.
+    Inserted PDF covers do not change printed page numbering. Existing artwork
+    and any numbers already in it are preserved, as are links and bookmarks.
     HTML and Markdown builds omit PDF covers. Bleed and trim setup is not provided.
 
 VARIABLES
@@ -137,14 +176,59 @@ VARIABLES
 THEMES
     CSS is applied in this order:
         1. Bundled base styling.
-        2. Project themes/NAME.css if present, otherwise bundled NAME.css.
+        2. Project themes/NAME.css or themes/NAME/NAME.css, if selected.
         3. The optional stylesheet specified in the configuration.
 
-    To create a theme, add themes/company.css and set theme: company.
-    A local themes/modern.css replaces only that project's modern theme.
+    To create a theme, add themes/company.css or
+    themes/company/company.css and set theme: company.
+    Base is the only bundled theme: black Helvetica/sans-serif text, 12pt size
+    and 1.5 line spacing. Omit theme or set theme: base to use it. A local
+    themes/base.css adds rules after the shared foundation. For small changes,
+    use stylesheet: styles.css without creating a named theme.
+    The bundled modern and vintage themes have been removed; select base or
+    supply a project-local theme instead.
     Use @media print for PDF-specific rules and @page for size and margins.
-    The base print layout uses A4, 20mm margins and a new page per chapter.
+    The base print layout defaults to A4, 20mm margins and a new page per chapter.
+    Use page_size to change paper size and HTML preview width together.
     Relative CSS asset URLs currently resolve from the project root.
+
+LAYOUT BLOCKS
+    Classed containers wrap ordinary Markdown without enabling raw HTML:
+
+        :::: columns columns-2-1
+        ::: column
+        Main text in the wider column.
+        :::
+
+        ::: column
+        Reference text in the narrower column.
+        :::
+        ::::
+
+    Use columns for two equal columns, columns columns-3 for three equal
+    columns, columns columns-2-1 for 2/3 + 1/3 or columns columns-1-2 for
+    1/3 + 2/3. Include one column block per column. Text stays in its own
+    block rather than automatically flowing between columns. Narrow screens
+    stack columns; print preserves their widths. Check long blocks in PDF.
+
+    Containers align-left, align-center, align-right and align-justify align
+    text. Left, center and right also position images. These classes can be
+    combined, for example: ::: column align-right.
+    Images fit the available width. Markdown table alignment is preserved.
+    Merged Markdown output keeps the container source syntax.
+
+COMMUNITY THEMES
+    chaptr themes list          List catalog themes and current versions.
+    chaptr themes info THEME    Show description, license and requirements.
+    chaptr themes add THEME     Install a theme in the current project.
+    chaptr themes check         Report available updates for installed themes.
+    chaptr themes update THEME  Replace one installed theme with its latest version.
+
+    Installed versions are recorded in each theme directory. Updates replace
+    downloaded files, so keep local overrides in the project's stylesheet.
+    Themes copied into a project by hand are not managed by these commands.
+    The catalog is hosted at github.com/clkjunk/chaptr-themes. Builds work
+    offline after the theme files have been installed.
 
 OUTPUT
     The selected output directory receives one file per build:
@@ -165,7 +249,7 @@ PDF REQUIREMENTS
         https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#installation
 
     If native libraries are missing, PDF builds fail; HTML and Markdown still
-    work. Self-contained executable releases are not available yet.
+    work. Install and update chaptr through pip.
 
 EXAMPLES
     Create a document project and build its documentation:
@@ -189,7 +273,12 @@ EXAMPLES
 
     Export merged Markdown or select another theme:
         chaptr build --format markdown
-        chaptr build --theme vintage
+        chaptr build --theme base
+
+    Browse and install community themes from a document project directory:
+        chaptr themes list
+        chaptr themes add roleplaying
+        chaptr themes check
 
 EXIT STATUS
     0   Success, including help output.
